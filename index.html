@@ -277,11 +277,24 @@
   .itin-handle:focus-visible{outline:2px solid var(--teal); outline-offset:-2px;}
   .itin-body{flex:1; min-width:0; padding:14px 16px 14px 2px;}
   .itin-top-row{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
-  .itin-del{
+  .itin-edit{
     margin-left:auto; flex:none; appearance:none; border:none; background:none; color:var(--ink-faint); cursor:pointer;
+    font-size:14px; line-height:1; padding:2px 4px;
+  }
+  .itin-edit:hover{color:var(--teal);}
+  .itin-del{
+    flex:none; appearance:none; border:none; background:none; color:var(--ink-faint); cursor:pointer;
     font-size:17px; line-height:1; padding:2px 4px;
   }
   .itin-del:hover{color:var(--coral);}
+  .edit-form{display:flex; flex-direction:column; gap:10px; padding:2px 0 4px;}
+  .edit-form textarea{
+    font-family:inherit; font-size:13.5px; padding:9px 10px; border-radius:8px; border:1.3px solid var(--line);
+    background:var(--paper-sunken); color:var(--ink); resize:vertical;
+  }
+  .edit-form textarea:focus, .edit-form input:focus, .edit-form select:focus{outline:2px solid var(--teal); outline-offset:1px;}
+  .edit-form-btns{display:flex; gap:8px;}
+  .btn.ghost{background:var(--paper-sunken); color:var(--ink-soft);}
   .itin-time{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint);}
   .itin-title{font-size:15px; font-weight:700; color:var(--ink);}
   .itin-note{font-size:13px; color:var(--ink-soft); margin-top:5px; line-height:1.65; white-space:pre-line;}
@@ -352,6 +365,11 @@
   .shop-item.bought .shop-name{color:var(--ink-faint); text-decoration:line-through;}
   .shop-note{font-size:12.5px; color:var(--ink-soft); margin-top:3px;}
   .shop-store{font-size:11.5px; color:var(--ink-faint); margin-top:2px; font-family:var(--font-mono);}
+  .shop-edit{
+    flex:none; appearance:none; border:none; background:none; color:var(--ink-faint); cursor:pointer;
+    font-size:14px; line-height:1; padding:2px 4px; margin-top:-1px;
+  }
+  .shop-edit:hover{color:var(--teal);}
   .shop-del{
     flex:none; appearance:none; border:none; background:none; color:var(--ink-faint); cursor:pointer;
     font-size:17px; line-height:1; padding:2px 4px; margin-top:-1px;
@@ -866,6 +884,8 @@
   var currentDay = (typeof TODAY_IDX === "number") ? TODAY_IDX : 0;
   var budgetLimit = null;
   var unsub = [];
+  var editingItinId = null;
+  var editingShopId = null;
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, function(c){
@@ -1120,6 +1140,26 @@
       + '<div class="photo-paste-zone" tabindex="0" data-kind="'+kind+'" data-id="'+id+'">📋 點此後貼上（Ctrl+V）</div>'
       + '</div>';
   }
+  function itinEditFormHtml(s){
+    var dayOpts = DAY_META.map(function(d,i){
+      return '<option value="'+i+'"'+(i===s.day?' selected':'')+'>DAY '+(i+1)+'・'+d.date+'</option>';
+    }).join("");
+    var catOpts = ["move","eat","sight","stay","relax"].map(function(c){
+      return '<option value="'+c+'"'+(c===s.cat?' selected':'')+'>'+CAT_NAME[c]+'</option>';
+    }).join("");
+    return '<div class="edit-form" data-id="'+s.id+'">'
+      + '<div class="field-row">'
+        + '<div class="field"><label>天數</label><select class="ie-day">'+dayOpts+'</select></div>'
+        + '<div class="field"><label>分類</label><select class="ie-cat">'+catOpts+'</select></div>'
+      + '</div>'
+      + '<div class="field-row">'
+        + '<div class="field"><label>時間（選填）</label><input class="ie-time" type="text" value="'+escapeHtml(s.time||"")+'" maxlength="12"></div>'
+        + '<div class="field"><label>項目名稱</label><input class="ie-title" type="text" value="'+escapeHtml(s.title||"")+'" maxlength="60"></div>'
+      + '</div>'
+      + '<div class="field"><label>備註（選填，支援 {b}粗體{/b}／{c:red}顏色{/c}／{a:網址}連結{/a} 標記）</label><textarea class="ie-note" rows="3">'+escapeHtml(s.note||"")+'</textarea></div>'
+      + '<div class="edit-form-btns"><button type="button" class="btn primary ie-save" data-id="'+s.id+'">儲存</button><button type="button" class="btn ghost ie-cancel">取消</button></div>'
+      + '</div>';
+  }
   function renderDay(idx){
     currentDay = idx;
     if (dayTabsEl){
@@ -1149,21 +1189,26 @@
       html += '<div class="itin-card-row">';
       html += '<button class="itin-handle" data-id="'+s.id+'" aria-label="拖曳調整「'+escapeHtml(s.title)+'」的順序" tabindex="0">⠿</button>';
       html += '<div class="itin-body">';
-      html += '<div class="itin-top-row"><button class="visit-check" data-id="'+s.id+'" aria-pressed="'+(s.visited?"true":"false")+'" aria-label="標記「'+escapeHtml(s.title)+'」已到過">'+CHECK_SVG+'</button><span class="cat-tag" style="background:var(--'+CAT_COLOR[s.cat]+'-wash);color:var(--'+CAT_COLOR[s.cat]+')">'+CAT_NAME[s.cat]+'</span>';
-      if (s.time) html += '<span class="itin-time">'+s.time+'</span>';
-      html += '<button class="itin-del" aria-label="刪除「'+escapeHtml(s.title)+'」" data-id="'+s.id+'">×</button>';
-      html += '</div>';
-      html += '<div class="itin-title">'+escapeHtml(s.title)+'</div>';
-      if (s.note) html += '<div class="itin-note">'+renderRichNote(s.note)+'</div>';
-      if (s.links && s.links.length){
-        html += '<div class="stop-links">' + s.links.map(function(l){
-          return '<a href="'+l.url+'" target="_blank" rel="noopener">🔗 '+escapeHtml(l.label)+'</a>';
-        }).join("") + '</div>';
+      if (s.id === editingItinId){
+        html += itinEditFormHtml(s);
+      } else {
+        html += '<div class="itin-top-row"><button class="visit-check" data-id="'+s.id+'" aria-pressed="'+(s.visited?"true":"false")+'" aria-label="標記「'+escapeHtml(s.title)+'」已到過">'+CHECK_SVG+'</button><span class="cat-tag" style="background:var(--'+CAT_COLOR[s.cat]+'-wash);color:var(--'+CAT_COLOR[s.cat]+')">'+CAT_NAME[s.cat]+'</span>';
+        if (s.time) html += '<span class="itin-time">'+s.time+'</span>';
+        html += '<button class="itin-edit" aria-label="編輯「'+escapeHtml(s.title)+'」" data-id="'+s.id+'">✎</button>';
+        html += '<button class="itin-del" aria-label="刪除「'+escapeHtml(s.title)+'」" data-id="'+s.id+'">×</button>';
+        html += '</div>';
+        html += '<div class="itin-title">'+escapeHtml(s.title)+'</div>';
+        if (s.note) html += '<div class="itin-note">'+renderRichNote(s.note)+'</div>';
+        if (s.links && s.links.length){
+          html += '<div class="stop-links">' + s.links.map(function(l){
+            return '<a href="'+l.url+'" target="_blank" rel="noopener">🔗 '+escapeHtml(l.label)+'</a>';
+          }).join("") + '</div>';
+        }
+        html += '<div class="itin-extra-row">';
+        html += '<label class="mini-field"><span>'+CAT_EXPENSE_LABEL[s.cat]+'（THB）</span><input type="number" inputmode="decimal" min="0" step="1" class="expense-input" data-id="'+s.id+'" placeholder="0" value="'+(s.expense!==null&&s.expense!==undefined?s.expense:'')+'"></label>';
+        html += photoControlsHtml("itinerary", s.id, s.photoUrl);
+        html += '</div>';
       }
-      html += '<div class="itin-extra-row">';
-      html += '<label class="mini-field"><span>'+CAT_EXPENSE_LABEL[s.cat]+'（THB）</span><input type="number" inputmode="decimal" min="0" step="1" class="expense-input" data-id="'+s.id+'" placeholder="0" value="'+(s.expense!==null&&s.expense!==undefined?s.expense:'')+'"></label>';
-      html += photoControlsHtml("itinerary", s.id, s.photoUrl);
-      html += '</div>';
       html += '</div>';
       html += '</div>';
       card.innerHTML = html;
@@ -1174,6 +1219,38 @@
       inp.addEventListener("change", function(){
         var v = inp.value==="" ? null : Number(inp.value);
         updateItinField(inp.dataset.id, {expense: v});
+      });
+    });
+    tl.querySelectorAll(".itin-edit").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        editingItinId = btn.dataset.id;
+        renderDay(currentDay);
+      });
+    });
+    tl.querySelectorAll(".ie-cancel").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        editingItinId = null;
+        renderDay(currentDay);
+      });
+    });
+    tl.querySelectorAll(".ie-save").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        var form = btn.closest(".edit-form");
+        var title = form.querySelector(".ie-title").value.trim();
+        if (!title) { form.querySelector(".ie-title").focus(); return; }
+        var patch = {
+          day: Number(form.querySelector(".ie-day").value),
+          cat: form.querySelector(".ie-cat").value,
+          time: form.querySelector(".ie-time").value.trim(),
+          title: title,
+          note: form.querySelector(".ie-note").value.trim()
+        };
+        editingItinId = null;
+        updateItinField(btn.dataset.id, patch);
+        renderDay(patch.day);
       });
     });
     tl.querySelectorAll(".photo-upload-btn").forEach(function(btn){
@@ -1431,6 +1508,12 @@
         bodyHtml = '<div class="card empty-note">'+(ow==="asan" ? "阿殤還沒加入清單，用下方表單新增第一項吧～" : "這個分類目前沒有項目。")+'</div>';
       } else {
         bodyHtml = '<div class="shop-item-list">' + items.map(function(it){
+          if (it.id === editingShopId){
+            return '<div class="shop-item" data-id="'+it.id+'">'
+              + photoBlockHtml("shopping", it.id, it.photoUrl)
+              + '<div class="shop-item-row" style="width:100%">' + shopEditFormHtml(it) + '</div>'
+            + '</div>';
+          }
           return '<div class="shop-item'+(it.bought?' bought':'')+'" data-id="'+it.id+'">'
             + photoBlockHtml("shopping", it.id, it.photoUrl)
             +'<div class="shop-item-row">'
@@ -1444,6 +1527,7 @@
                 + photoControlsHtml("shopping", it.id, it.photoUrl)
               +'</div>'
             +'</div>'
+            +'<button class="shop-edit" aria-label="編輯" data-id="'+it.id+'">✎</button>'
             +'<button class="shop-del" aria-label="刪除" data-del="'+it.id+'">×</button>'
             +'</div>'
           +'</div>';
@@ -1483,11 +1567,64 @@
     wrap.querySelectorAll(".photo-remove").forEach(function(btn){
       btn.addEventListener("click", function(e){ e.stopPropagation(); removePhoto(btn.dataset.kind, btn.dataset.id); });
     });
+    wrap.querySelectorAll(".shop-edit").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        editingShopId = btn.dataset.id;
+        renderShopping();
+      });
+    });
+    wrap.querySelectorAll(".se-cancel").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        editingShopId = null;
+        renderShopping();
+      });
+    });
+    wrap.querySelectorAll(".se-save").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        var form = btn.closest(".edit-form");
+        var name = form.querySelector(".se-name").value.trim();
+        if (!name){ form.querySelector(".se-name").focus(); return; }
+        var patch = {
+          owner: form.querySelector(".se-owner").value,
+          category: form.querySelector(".se-cat").value,
+          name: name,
+          note: form.querySelector(".se-note").value.trim(),
+          store: form.querySelector(".se-store").value.trim()
+        };
+        editingShopId = null;
+        updateShopField(btn.dataset.id, patch);
+        renderShopping();
+      });
+    });
   }
   function catTag(cat){
     var colorMap = {"零食":"coral","藥妝保健":"teal","服飾":"gold","伴手禮":"violet","生活用品":"pink","其他":"ink-faint"};
     var c = colorMap[cat] || "ink-faint";
     return '<span class="cat-tag" style="background:var(--'+c+'-wash,var(--paper-sunken));color:var(--'+c+')">'+escapeHtml(cat)+'</span>';
+  }
+  var SHOP_CATS = ["零食","藥妝保健","服飾","伴手禮","生活用品","其他"];
+  function shopEditFormHtml(it){
+    var ownerOpts = ["timmy","asan"].map(function(ow){
+      return '<option value="'+ow+'"'+(ow===it.owner?' selected':'')+'>'+OWNER_NAME[ow]+'</option>';
+    }).join("");
+    var catOpts = SHOP_CATS.map(function(c){
+      return '<option value="'+c+'"'+(c===it.category?' selected':'')+'>'+c+'</option>';
+    }).join("");
+    return '<div class="edit-form" data-id="'+it.id+'">'
+      + '<div class="field-row">'
+        + '<div class="field"><label>誰的清單</label><select class="se-owner">'+ownerOpts+'</select></div>'
+        + '<div class="field"><label>分類</label><select class="se-cat">'+catOpts+'</select></div>'
+      + '</div>'
+      + '<div class="field"><label>商品名稱</label><input class="se-name" type="text" value="'+escapeHtml(it.name||"")+'" maxlength="60"></div>'
+      + '<div class="field-row">'
+        + '<div class="field"><label>備註</label><input class="se-note" type="text" value="'+escapeHtml(it.note||"")+'" maxlength="80"></div>'
+        + '<div class="field"><label>店家／數量</label><input class="se-store" type="text" value="'+escapeHtml(it.store||"")+'" maxlength="40"></div>'
+      + '</div>'
+      + '<div class="edit-form-btns"><button type="button" class="btn primary se-save" data-id="'+it.id+'">儲存</button><button type="button" class="btn ghost se-cancel">取消</button></div>'
+      + '</div>';
   }
   function toggleShopBought(id){
     var it = state.shopping.find(function(s){ return s.id===id; });
