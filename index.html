@@ -127,6 +127,9 @@
     overflow-x:auto; scrollbar-width:none;
   }
   .tabs::-webkit-scrollbar{display:none;}
+  @media (min-width:520px){
+    .tabs{ justify-content:center; }
+  }
   .tab-btn{
     appearance:none; border:none; background:transparent; cursor:pointer;
     padding:10px 14px 12px; font-size:14px; font-weight:600; color:var(--ink-faint);
@@ -197,6 +200,11 @@
   .check-icon{font-size:15px; margin-right:6px;}
   .check-title{font-size:14.5px; font-weight:600; color:var(--ink);}
   .check-row.done .check-title{color:var(--ink-faint); text-decoration:line-through; text-decoration-color:var(--ink-faint);}
+  .prep-del{
+    flex:none; align-self:flex-start; margin-left:auto; appearance:none; border:none; background:none; color:var(--ink-faint);
+    cursor:pointer; font-size:16px; line-height:1; padding:2px 4px;
+  }
+  .prep-del:hover{color:var(--coral);}
   .check-note{font-size:12.5px; color:var(--ink-soft); margin-top:3px; line-height:1.5;}
   .check-note a{color:var(--teal);}
 
@@ -378,6 +386,37 @@
   .empty-note{padding:20px 4px; font-size:13px; color:var(--ink-faint); line-height:1.7;}
   .shop-extra-row{display:flex; align-items:flex-end; gap:10px; margin-top:9px; flex-wrap:wrap;}
 
+  /* split bill */
+  .split-preview{
+    font-size:13px; color:var(--ink-soft); background:var(--teal-wash); border-radius:8px; padding:9px 11px; margin:2px 0 0;
+  }
+  .split-preview b{color:var(--teal); font-family:var(--font-mono);}
+  .split-summary{
+    display:flex; align-items:center; justify-content:space-between; padding:10px 2px 16px; font-size:12.5px; color:var(--ink-faint);
+  }
+  .split-list{display:flex; flex-direction:column; gap:10px;}
+  .split-card{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow);
+    padding:14px 16px; display:flex; flex-direction:column; gap:8px;
+  }
+  .split-top-row{display:flex; align-items:flex-start; gap:8px;}
+  .split-desc{font-size:14.5px; font-weight:700; color:var(--ink); flex:1; min-width:0;}
+  .split-del{
+    flex:none; appearance:none; border:none; background:none; color:var(--ink-faint); cursor:pointer;
+    font-size:17px; line-height:1; padding:0 4px;
+  }
+  .split-del:hover{color:var(--coral);}
+  .split-meta{font-size:12px; color:var(--ink-faint); font-family:var(--font-mono);}
+  .split-each-row{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:2px;}
+  .split-each{font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--teal);}
+  .split-each span{font-size:11.5px; font-weight:600; color:var(--ink-faint); font-family:var(--font-body); margin-right:6px;}
+  .split-copy{
+    flex:none; appearance:none; border:1.3px solid var(--line); background:var(--paper-sunken); color:var(--ink-soft);
+    font-size:11.5px; font-weight:600; padding:7px 11px; border-radius:100px; cursor:pointer; font-family:inherit;
+  }
+  .split-copy:hover{border-color:var(--teal); color:var(--teal);}
+  .split-copy.copied{border-color:var(--teal); color:var(--teal); background:var(--teal-wash);}
+
   /* photo controls (shared) */
   .photo-slot{display:flex; align-items:center;}
   .media-photo-wrap{position:relative; width:100%; line-height:0;}
@@ -475,6 +514,7 @@
       <button class="tab-btn" role="tab" data-tab="home" aria-selected="true">首頁</button>
       <button class="tab-btn" role="tab" data-tab="itin" aria-selected="false">行程</button>
       <button class="tab-btn" role="tab" data-tab="shop" aria-selected="false">購物清單</button>
+      <button class="tab-btn" role="tab" data-tab="split" aria-selected="false">分帳</button>
       <button class="tab-btn" role="tab" data-tab="pack" aria-selected="false">行李清單</button>
       <button class="tab-btn" role="tab" data-tab="map" aria-selected="false">交通地圖</button>
     </nav>
@@ -485,6 +525,11 @@
 
   <!-- HOME -->
   <section class="panel" id="panel-home" role="tabpanel">
+    <section class="block" id="today-block" hidden>
+      <h2>今日行程</h2>
+      <div class="card" id="today-card" style="padding:14px 16px;"></div>
+    </section>
+
     <section class="block">
       <h2>航班資訊</h2>
       <div class="card flight-card">
@@ -547,6 +592,24 @@
           <div class="progress-label" id="prep-label">0/0</div>
         </div>
         <div id="prep-list"></div>
+      </div>
+      <div class="add-form">
+        <h3>+ 新增待辦</h3>
+        <div class="field-row">
+          <div class="field" style="max-width:76px; min-width:60px;">
+            <label for="pp-icon">圖示</label>
+            <input id="pp-icon" type="text" placeholder="📌" maxlength="4">
+          </div>
+          <div class="field">
+            <label for="pp-task">事項</label>
+            <input id="pp-task" type="text" placeholder="例如：訂晚餐餐廳" maxlength="60">
+          </div>
+        </div>
+        <div class="field">
+          <label for="pp-note">備註（選填）</label>
+          <input id="pp-note" type="text" placeholder="補充說明" maxlength="120">
+        </div>
+        <button class="btn primary block" id="pp-submit">加入待辦</button>
       </div>
     </section>
 
@@ -697,6 +760,32 @@
       <button class="btn primary block" id="f-submit">加入清單</button>
       <p style="font-size:11px;color:var(--ink-faint);line-height:1.6;margin-top:2px" id="sync-note"></p>
     </div>
+  </section>
+
+  <!-- SPLIT BILL -->
+  <section class="panel" id="panel-split" role="tabpanel" hidden>
+    <div class="add-form" style="margin-top:0;">
+      <h3>+ 新增一筆代墊費用</h3>
+      <div class="field">
+        <label for="sp-desc">這筆錢是付了什麼</label>
+        <input id="sp-desc" type="text" placeholder="例如：晚餐、計程車、按摩" maxlength="60">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="sp-amount">總金額（THB）</label>
+          <input id="sp-amount" type="number" inputmode="decimal" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="sp-people">分帳人數</label>
+          <input id="sp-people" type="number" inputmode="numeric" min="1" step="1" placeholder="2" value="2">
+        </div>
+      </div>
+      <p class="split-preview" id="sp-preview">輸入金額和人數後，這裡會顯示每人應付多少。</p>
+      <button class="btn primary block" id="sp-submit">新增紀錄</button>
+    </div>
+
+    <div class="split-summary" id="split-summary"></div>
+    <div class="split-list" id="split-list"></div>
   </section>
 
   <!-- PACKING -->
@@ -877,7 +966,8 @@
     prep: DEFAULT_PREP.slice(),
     shopping: DEFAULT_SHOPPING.slice(),
     packing: DEFAULT_PACKING.map(function(g){return {cat:g.cat, items:g.items.slice()};}),
-    itinerary: ITINERARY_SEED.slice()
+    itinerary: ITINERARY_SEED.slice(),
+    splits: []
   };
   var db = null;
   var ownerFilter = "all", catFilter = "all";
@@ -940,7 +1030,7 @@
   tabBtns.forEach(function(btn){
     btn.addEventListener("click", function(){
       tabBtns.forEach(function(b){ b.setAttribute("aria-selected", b===btn ? "true":"false"); });
-      ["home","itin","shop","pack","map"].forEach(function(key){
+      ["home","itin","shop","split","pack","map"].forEach(function(key){
         document.getElementById("panel-"+key).hidden = (key !== btn.dataset.tab);
       });
     });
@@ -1053,8 +1143,12 @@
       if (p.done) done++;
       var row = document.createElement("div");
       row.className = "check-row" + (p.done ? " done":"");
-      row.innerHTML = '<div class="check-box">'+CHECK_SVG+'</div><div class="check-body"><div class="check-title"><span class="check-icon">'+p.icon+'</span>'+escapeHtml(p.task)+'</div>'+(p.note?'<div class="check-note">'+escapeHtml(p.note)+'</div>':'')+'</div>';
+      row.innerHTML = '<div class="check-box">'+CHECK_SVG+'</div><div class="check-body"><div class="check-title"><span class="check-icon">'+(p.icon||"📌")+'</span>'+escapeHtml(p.task)+'</div>'+(p.note?'<div class="check-note">'+escapeHtml(p.note)+'</div>':'')+'</div><button class="prep-del" aria-label="刪除「'+escapeHtml(p.task)+'」" data-id="'+p.id+'">×</button>';
       row.addEventListener("click", function(){ togglePrep(p.id); });
+      row.querySelector(".prep-del").addEventListener("click", function(e){
+        e.stopPropagation();
+        deletePrepItem(p.id);
+      });
       list.appendChild(row);
     });
     document.getElementById("prep-fill").style.width = (state.prep.length? (done/state.prep.length*100):0) + "%";
@@ -1071,6 +1165,39 @@
       saveLocal();
       renderPrep();
     }
+  }
+  function addPrepItem(data){
+    var id = "prep-custom-" + Date.now() + "-" + Math.floor(Math.random()*1000);
+    var doc = Object.assign({id:id, done:false}, data);
+    if (db){
+      db.collection("prep").doc(id).set(withoutId(doc)).catch(function(){
+        state.prep.push(doc); renderPrep();
+      });
+    } else {
+      state.prep.push(doc); saveLocal(); renderPrep();
+    }
+  }
+  function deletePrepItem(id){
+    if (db){
+      db.collection("prep").doc(id).delete().catch(function(){});
+    } else {
+      state.prep = state.prep.filter(function(p){ return p.id!==id; });
+      saveLocal();
+    }
+    renderPrep();
+  }
+  var ppSubmit = document.getElementById("pp-submit");
+  if (ppSubmit){
+    ppSubmit.addEventListener("click", function(){
+      var task = document.getElementById("pp-task").value.trim();
+      if (!task){ document.getElementById("pp-task").focus(); return; }
+      var icon = document.getElementById("pp-icon").value.trim() || "📌";
+      var note = document.getElementById("pp-note").value.trim();
+      addPrepItem({ icon: icon, task: task, note: note });
+      document.getElementById("pp-icon").value = "";
+      document.getElementById("pp-task").value = "";
+      document.getElementById("pp-note").value = "";
+    });
   }
 
   /* ---------- packing render ---------- */
@@ -1269,6 +1396,40 @@
       });
     });
     wireDrag(tl);
+    renderTodayCard();
+  }
+  function renderTodayCard(){
+    var block = document.getElementById("today-block");
+    var card = document.getElementById("today-card");
+    if (!block || !card) return;
+    if (typeof TODAY_IDX !== "number"){ block.hidden = true; return; }
+    var stops = stopsForDay(TODAY_IDX);
+    if (!stops.length){ block.hidden = true; return; }
+    block.hidden = false;
+    var meta = DAY_META[TODAY_IDX];
+    var nextIdx = stops.findIndex(function(s){ return !s.visited; });
+    var html = '<div style="font-size:12px;color:var(--ink-faint);margin-bottom:10px;">DAY '+(TODAY_IDX+1)+'・'+meta.date+'・'+meta.label+'</div>';
+    html += stops.map(function(s, i){
+      var isNext = (i === nextIdx);
+      return '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;'+(i<stops.length-1?'border-bottom:1px solid var(--line);':'')+(s.visited?'opacity:.5;':'')+'">'
+        + '<span class="cat-tag" style="flex:none;background:var(--'+CAT_COLOR[s.cat]+'-wash);color:var(--'+CAT_COLOR[s.cat]+')">'+CAT_NAME[s.cat]+'</span>'
+        + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:13.5px;font-weight:'+(isNext?'700':'600')+';color:'+(s.visited?'var(--ink-faint)':'var(--ink)')+';'+(s.visited?'text-decoration:line-through;':'')+'">'+escapeHtml(s.title)+'</div>'
+          + (s.time?'<div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:2px;">'+s.time+'</div>':'')
+        + '</div>'
+        + (isNext?'<span style="flex:none;font-size:10.5px;font-weight:700;color:var(--teal);background:var(--teal-wash);padding:2px 8px;border-radius:100px;">下一個</span>':'')
+      + '</div>';
+    }).join("");
+    html += '<button type="button" class="btn ghost block" id="today-view-btn" style="margin-top:12px;">查看完整行程 →</button>';
+    card.innerHTML = html;
+    var viewBtn = card.querySelector("#today-view-btn");
+    if (viewBtn){
+      viewBtn.addEventListener("click", function(){
+        var itinTab = document.querySelector('.tab-btn[data-tab="itin"]');
+        if (itinTab) itinTab.click();
+        renderDay(TODAY_IDX);
+      });
+    }
   }
   var jumpTodayBtn = document.getElementById("jump-today");
   if (jumpTodayBtn){
@@ -1694,6 +1855,105 @@
     document.getElementById("f-store").value = "";
   });
 
+  /* ---------- split bill ---------- */
+  function fmtSplitAmt(n){
+    if (n===null || n===undefined || isNaN(n)) return "0";
+    return (Math.round(n*100)/100).toLocaleString("en-US", {maximumFractionDigits:2});
+  }
+  function splitPreviewText(){
+    var amountEl = document.getElementById("sp-amount");
+    var peopleEl = document.getElementById("sp-people");
+    var el = document.getElementById("sp-preview");
+    if (!el || !amountEl || !peopleEl) return;
+    var amount = parseFloat(amountEl.value);
+    var people = parseInt(peopleEl.value, 10);
+    if (!amount || amount<=0 || !people || people<=0){
+      el.textContent = "輸入金額和人數後，這裡會顯示每人應付多少。";
+      return;
+    }
+    var each = amount / people;
+    el.innerHTML = "每人應付 <b>฿"+fmtSplitAmt(each)+"</b>（共 "+people+" 人分攤 ฿"+fmtTHB(amount)+"）";
+  }
+  ["sp-amount","sp-people"].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.addEventListener("input", splitPreviewText);
+  });
+  function renderSplit(){
+    var summary = document.getElementById("split-summary");
+    var list = document.getElementById("split-list");
+    if (!summary || !list) return;
+    var total = state.splits.reduce(function(a,s){ return a + (s.amount?Number(s.amount):0); }, 0);
+    summary.textContent = state.splits.length ? ("共 "+state.splits.length+" 筆代墊，合計 ฿"+fmtTHB(total)) : "";
+    if (!state.splits.length){
+      list.innerHTML = '<div class="card empty-note">還沒有分帳紀錄，用上面的表單新增一筆代墊費用吧～</div>';
+      return;
+    }
+    list.innerHTML = state.splits.map(function(s){
+      var each = s.people>0 ? (s.amount/s.people) : 0;
+      return '<div class="split-card" data-id="'+s.id+'">'
+        + '<div class="split-top-row"><div class="split-desc">'+escapeHtml(s.desc||"未命名花費")+'</div><button class="split-del" aria-label="刪除" data-id="'+s.id+'">×</button></div>'
+        + '<div class="split-meta">總額 ฿'+fmtTHB(s.amount)+' ・ '+s.people+' 人分攤</div>'
+        + '<div class="split-each-row"><div class="split-each"><span>每人應付</span>฿'+fmtSplitAmt(each)+'</div><button class="split-copy" data-id="'+s.id+'" type="button">📋 複製文字</button></div>'
+        + '</div>';
+    }).join("");
+    list.querySelectorAll(".split-del").forEach(function(btn){
+      btn.addEventListener("click", function(){ deleteSplitItem(btn.dataset.id); });
+    });
+    list.querySelectorAll(".split-copy").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var s = state.splits.find(function(x){ return x.id===btn.dataset.id; });
+        if (!s) return;
+        var each = s.people>0 ? (s.amount/s.people) : 0;
+        var text = (s.desc||"這筆花費") + " 共 ฿"+fmtTHB(s.amount)+"，"+s.people+" 人分攤，每人應付 ฿"+fmtSplitAmt(each);
+        var done = function(){
+          btn.textContent = "已複製 ✓";
+          btn.classList.add("copied");
+          setTimeout(function(){ btn.textContent = "📋 複製文字"; btn.classList.remove("copied"); }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(done).catch(function(){ window.prompt("複製下面這段文字：", text); });
+        } else {
+          window.prompt("複製下面這段文字：", text);
+        }
+      });
+    });
+  }
+  function addSplitItem(data){
+    var id = "split-" + Date.now() + "-" + Math.floor(Math.random()*1000);
+    var doc = Object.assign({id:id, ts: Date.now()}, data);
+    if (db){
+      db.collection("splits").doc(id).set(withoutId(doc)).catch(function(){
+        state.splits.unshift(doc); renderSplit();
+      });
+    } else {
+      state.splits.unshift(doc); saveLocal(); renderSplit();
+    }
+  }
+  function deleteSplitItem(id){
+    if (db){
+      db.collection("splits").doc(id).delete().catch(function(){});
+    } else {
+      state.splits = state.splits.filter(function(s){ return s.id!==id; });
+      saveLocal();
+    }
+    renderSplit();
+  }
+  var spSubmit = document.getElementById("sp-submit");
+  if (spSubmit){
+    spSubmit.addEventListener("click", function(){
+      var desc = document.getElementById("sp-desc").value.trim();
+      var amount = parseFloat(document.getElementById("sp-amount").value);
+      var people = parseInt(document.getElementById("sp-people").value, 10);
+      if (!amount || amount<=0){ document.getElementById("sp-amount").focus(); return; }
+      if (!people || people<=0){ document.getElementById("sp-people").focus(); return; }
+      addSplitItem({ desc: desc, amount: amount, people: people });
+      document.getElementById("sp-desc").value = "";
+      document.getElementById("sp-amount").value = "";
+      document.getElementById("sp-people").value = "2";
+      splitPreviewText();
+    });
+  }
+
   /* ---------- local fallback persistence ---------- */
   function saveLocal(){
     try{
@@ -1769,10 +2029,16 @@
       budgetLimit = (doc && doc.data().limit!=null) ? doc.data().limit : null;
       renderBudget();
     }, function(){}));
+
+    unsub.push(db.collection("splits").onSnapshot(function(snap){
+      state.splits = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })
+        .sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+      renderSplit();
+    }, function(){}));
   }
 
   function init(){
-    renderBudget(); renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay);
+    renderBudget(); renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay); renderSplit();
     var syncNote = document.getElementById("sync-note");
     if (firebaseReady()){
       try{
@@ -1784,13 +2050,13 @@
         if (syncNote) syncNote.textContent = "同步資料庫連線失敗，目前僅儲存在這個裝置裡。";
         loadLocal();
         budgetLimit = getBudgetLimitLocal();
-        renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay); renderBudget();
+        renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay); renderBudget(); renderSplit();
       }
     } else {
       if (syncNote) syncNote.textContent = "尚未設定 Firebase，目前僅儲存在這個裝置的瀏覽器裡，換裝置或分享給朋友不會同步。";
       loadLocal();
       budgetLimit = getBudgetLimitLocal();
-      renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay); renderBudget();
+      renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay); renderBudget(); renderSplit();
     }
     if (!cloudinaryReady()){
       console.warn("Cloudinary 尚未設定：照片上傳功能暫時停用。");
