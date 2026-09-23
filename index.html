@@ -722,7 +722,6 @@
 
   <!-- SHOPPING -->
   <section class="panel" id="panel-shop" role="tabpanel" hidden>
-    <div class="card" id="shop-budget-card" style="padding:14px 16px 12px; margin-bottom:16px;"></div>
     <div class="chip-row" id="owner-filter">
       <button class="chip" data-owner="all" aria-pressed="true">全部</button>
       <button class="chip" data-owner="timmy" aria-pressed="false">火鍋</button>
@@ -775,6 +774,10 @@
           <label for="f-store">店家／數量</label>
           <input id="f-store" type="text" placeholder="選填" maxlength="40">
         </div>
+      </div>
+      <div class="field">
+        <label for="f-budget">預算（THB，選填）</label>
+        <input id="f-budget" type="number" inputmode="decimal" min="0" step="1" placeholder="不限">
       </div>
       <button class="btn primary block" id="f-submit">加入清單</button>
       <p style="font-size:11px;color:var(--ink-faint);line-height:1.6;margin-top:2px" id="sync-note"></p>
@@ -996,7 +999,6 @@
   var ownerFilter = "all", catFilter = "all";
   var currentDay = (typeof TODAY_IDX === "number") ? TODAY_IDX : 0;
   var budgetLimit = null;
-  var shopBudgetLimit = null;
   var unsub = [];
   var editingItinId = null;
   var editingShopId = null;
@@ -1129,42 +1131,6 @@
       setBudgetLimitLocal(v);
     }
     renderBudget();
-  }
-  function getShopBudgetLimitLocal(){
-    try{ var v = parseFloat(localStorage.getItem("bkk-shop-budget-limit")); return isNaN(v)?null:v; }catch(e){ return null; }
-  }
-  function setShopBudgetLimitLocal(v){
-    try{ if (v===null) localStorage.removeItem("bkk-shop-budget-limit"); else localStorage.setItem("bkk-shop-budget-limit", String(v)); }catch(e){}
-  }
-  function setShopBudgetLimit(v){
-    shopBudgetLimit = v;
-    if (db){
-      db.collection("meta").doc("shopBudget").set({limit: v}).catch(function(){});
-    } else {
-      setShopBudgetLimitLocal(v);
-    }
-    renderShopBudget();
-  }
-  function renderShopBudget(){
-    var box = document.getElementById("shop-budget-card");
-    if (!box) return;
-    var spent = 0;
-    state.shopping.forEach(function(s){ if (s.spent) spent += Number(s.spent); });
-    var over = (shopBudgetLimit!==null && spent>shopBudgetLimit);
-    var html = '<div class="budget-row total" style="padding-top:0; border-top:none;"><span class="lbl">購物目前花費</span><span class="amt" style="color:'+(over?'var(--coral)':'var(--teal)')+'">฿'+fmtTHB(spent)+'</span></div>';
-    html += '<div class="rate-row" style="margin-top:10px; padding-top:10px;">購物預算 <input type="number" id="shop-budget-input" min="0" step="100" placeholder="不限" value="'+(shopBudgetLimit!==null?shopBudgetLimit:'')+'"> THB'
-      + (shopBudgetLimit!==null
-          ? ('<span class="twd-hint" style="color:'+(over?'var(--coral)':'var(--ink-faint)')+'">'+(over ? '已超出 ฿'+fmtTHB(spent-shopBudgetLimit) : '剩餘 ฿'+fmtTHB(shopBudgetLimit-spent))+'</span>')
-          : '<span class="twd-hint">輸入預算後超支會變色提醒</span>')
-      + '</div>';
-    box.innerHTML = html;
-    var input = document.getElementById("shop-budget-input");
-    if (input){
-      input.addEventListener("change", function(){
-        var v = input.value==="" ? null : Number(input.value);
-        setShopBudgetLimit(v);
-      });
-    }
   }
   function renderBudget(){
     var box = document.getElementById("budget-card");
@@ -1762,7 +1728,6 @@
   /* ---------- shopping render ---------- */
   var OWNER_NAME = {timmy:"火鍋", asan:"阿殤"};
   function renderShopping(){
-    renderShopBudget();
     var wrap = document.getElementById("shop-groups");
     wrap.innerHTML = "";
     var owners = ownerFilter==="all" ? ["timmy","asan"] : [ownerFilter];
@@ -1784,16 +1749,18 @@
               + '<div class="shop-item-row" style="width:100%">' + shopEditFormHtml(it) + '</div>'
             + '</div>';
           }
+          var overBudgetItem = (it.budget!==null && it.budget!==undefined && it.spent!==null && it.spent!==undefined && Number(it.spent)>Number(it.budget));
           return '<div class="shop-item'+(it.bought?' bought':'')+'" data-id="'+it.id+'">'
             + photoBlockHtml("shopping", it.id, it.photoUrl)
             +'<div class="shop-item-row">'
             +'<div class="check-box shop-check">'+CHECK_SVG+'</div>'
             +'<div class="shop-body">'
-              +'<div class="shop-name-row"><span class="shop-name">'+escapeHtml(it.name)+'</span>'+catTag(it.category)+'</div>'
+              +'<div class="shop-name-row"><span class="shop-name">'+escapeHtml(it.name)+'</span>'+catTag(it.category)+(overBudgetItem?'<span class="cat-tag" style="background:var(--coral-wash);color:var(--coral)">超支 ฿'+fmtTHB(Number(it.spent)-Number(it.budget))+'</span>':'')+'</div>'
               +(it.note?'<div class="shop-note">'+escapeHtml(it.note)+'</div>':'')
               +(it.store?'<div class="shop-store">'+escapeHtml(it.store)+'</div>':'')
               +'<div class="shop-extra-row">'
-                +'<label class="mini-field"><span>實際花費（THB）</span><input type="number" inputmode="decimal" min="0" step="1" class="spent-input" data-id="'+it.id+'" placeholder="0" value="'+(it.spent!==null&&it.spent!==undefined?it.spent:'')+'"></label>'
+                +'<label class="mini-field"><span>預算（THB）</span><input type="number" inputmode="decimal" min="0" step="1" class="budget-input" data-id="'+it.id+'" placeholder="不限" value="'+(it.budget!==null&&it.budget!==undefined?it.budget:'')+'"></label>'
+                +'<label class="mini-field"><span>實際花費（THB）</span><input type="number" inputmode="decimal" min="0" step="1" class="spent-input" data-id="'+it.id+'" placeholder="0" value="'+(it.spent!==null&&it.spent!==undefined?it.spent:'')+'" style="'+(overBudgetItem?'color:var(--coral);':'')+'"></label>'
                 + photoControlsHtml("shopping", it.id, it.photoUrl)
               +'</div>'
             +'</div>'
@@ -1829,6 +1796,15 @@
       inp.addEventListener("change", function(){
         var v = inp.value==="" ? null : Number(inp.value);
         updateShopField(inp.dataset.id, {spent: v});
+        renderShopping();
+      });
+    });
+    wrap.querySelectorAll(".budget-input").forEach(function(inp){
+      inp.addEventListener("click", function(e){ e.stopPropagation(); });
+      inp.addEventListener("change", function(){
+        var v = inp.value==="" ? null : Number(inp.value);
+        updateShopField(inp.dataset.id, {budget: v});
+        renderShopping();
       });
     });
     wrap.querySelectorAll(".photo-upload-btn").forEach(function(btn){
@@ -1857,12 +1833,14 @@
         var form = btn.closest(".edit-form");
         var name = form.querySelector(".se-name").value.trim();
         if (!name){ form.querySelector(".se-name").focus(); return; }
+        var seBudgetVal = form.querySelector(".se-budget").value;
         var patch = {
           owner: form.querySelector(".se-owner").value,
           category: form.querySelector(".se-cat").value,
           name: name,
           note: form.querySelector(".se-note").value.trim(),
-          store: form.querySelector(".se-store").value.trim()
+          store: form.querySelector(".se-store").value.trim(),
+          budget: seBudgetVal==="" ? null : Number(seBudgetVal)
         };
         editingShopId = null;
         updateShopField(btn.dataset.id, patch);
@@ -1893,6 +1871,7 @@
         + '<div class="field"><label>備註</label><input class="se-note" type="text" value="'+escapeHtml(it.note||"")+'" maxlength="80"></div>'
         + '<div class="field"><label>店家／數量</label><input class="se-store" type="text" value="'+escapeHtml(it.store||"")+'" maxlength="40"></div>'
       + '</div>'
+      + '<div class="field"><label>預算（THB，選填）</label><input class="se-budget" type="number" inputmode="decimal" min="0" step="1" placeholder="不限" value="'+(it.budget!==null&&it.budget!==undefined?it.budget:'')+'"></div>'
       + '<div class="edit-form-btns"><button type="button" class="btn primary se-save" data-id="'+it.id+'">儲存</button><button type="button" class="btn ghost se-cancel">取消</button></div>'
       + '</div>';
   }
@@ -1952,16 +1931,19 @@
   document.getElementById("f-submit").addEventListener("click", function(){
     var name = document.getElementById("f-name").value.trim();
     if (!name){ document.getElementById("f-name").focus(); return; }
+    var budgetVal = document.getElementById("f-budget").value;
     addShopItem({
       owner: document.getElementById("f-owner").value,
       category: document.getElementById("f-cat").value,
       name: name,
       note: document.getElementById("f-note").value.trim(),
-      store: document.getElementById("f-store").value.trim()
+      store: document.getElementById("f-store").value.trim(),
+      budget: budgetVal==="" ? null : Number(budgetVal)
     });
     document.getElementById("f-name").value = "";
     document.getElementById("f-note").value = "";
     document.getElementById("f-store").value = "";
+    document.getElementById("f-budget").value = "";
   });
 
   /* ---------- split bill ---------- */
@@ -2137,9 +2119,6 @@
       var doc = snap.docs.find(function(d){ return d.id==="budget"; });
       budgetLimit = (doc && doc.data().limit!=null) ? doc.data().limit : null;
       renderBudget();
-      var shopDoc = snap.docs.find(function(d){ return d.id==="shopBudget"; });
-      shopBudgetLimit = (shopDoc && shopDoc.data().limit!=null) ? shopDoc.data().limit : null;
-      renderShopBudget();
     }, function(){}));
 
     unsub.push(db.collection("splits").onSnapshot(function(snap){
@@ -2162,14 +2141,12 @@
         if (syncNote) syncNote.textContent = "同步資料庫連線失敗，目前僅儲存在這個裝置裡。";
         loadLocal();
         budgetLimit = getBudgetLimitLocal();
-        shopBudgetLimit = getShopBudgetLimitLocal();
         renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay); renderBudget(); renderSplit();
       }
     } else {
       if (syncNote) syncNote.textContent = "尚未設定 Firebase，目前僅儲存在這個裝置的瀏覽器裡，換裝置或分享給朋友不會同步。";
       loadLocal();
       budgetLimit = getBudgetLimitLocal();
-      shopBudgetLimit = getShopBudgetLimitLocal();
       renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay); renderBudget(); renderSplit();
     }
     if (!cloudinaryReady()){
