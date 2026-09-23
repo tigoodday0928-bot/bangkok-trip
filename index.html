@@ -712,12 +712,17 @@
         <label for="fi-note">備註（選填）</label>
         <input id="fi-note" type="text" placeholder="交通方式／提醒事項" maxlength="200">
       </div>
+      <div class="field">
+        <label for="fi-mapquery">🌐 地圖搜尋關鍵字（選填，留空就用項目名稱查）</label>
+        <input id="fi-mapquery" type="text" placeholder="例如：完整店名、地址，或飯店英文名" maxlength="120">
+      </div>
       <button class="btn primary block" id="fi-submit">加入行程</button>
     </div>
   </section>
 
   <!-- SHOPPING -->
   <section class="panel" id="panel-shop" role="tabpanel" hidden>
+    <div class="card" id="shop-budget-card" style="padding:14px 16px 12px; margin-bottom:16px;"></div>
     <div class="chip-row" id="owner-filter">
       <button class="chip" data-owner="all" aria-pressed="true">全部</button>
       <button class="chip" data-owner="timmy" aria-pressed="false">火鍋</button>
@@ -991,6 +996,7 @@
   var ownerFilter = "all", catFilter = "all";
   var currentDay = (typeof TODAY_IDX === "number") ? TODAY_IDX : 0;
   var budgetLimit = null;
+  var shopBudgetLimit = null;
   var unsub = [];
   var editingItinId = null;
   var editingShopId = null;
@@ -1075,15 +1081,15 @@
   var CHECK_SVG = '<svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   /* ---------- google map modal (itinerary spots) ---------- */
-  function openMapModal(title){
+  function openMapModal(query, label){
     var overlay = document.getElementById("gmap-overlay");
     var frame = document.getElementById("gmap-modal-frame");
     var titleEl = document.getElementById("gmap-modal-title");
     var extLink = document.getElementById("gmap-modal-external");
     if (!overlay || !frame) return;
-    var q = encodeURIComponent(title + " Bangkok");
+    var q = encodeURIComponent(query + " Bangkok");
     frame.src = "https://maps.google.com/maps?q=" + q + "&z=16&output=embed";
-    if (titleEl) titleEl.textContent = title;
+    if (titleEl) titleEl.textContent = label || query;
     if (extLink) extLink.href = "https://www.google.com/maps/search/?api=1&query=" + q;
     overlay.hidden = false;
   }
@@ -1123,6 +1129,42 @@
       setBudgetLimitLocal(v);
     }
     renderBudget();
+  }
+  function getShopBudgetLimitLocal(){
+    try{ var v = parseFloat(localStorage.getItem("bkk-shop-budget-limit")); return isNaN(v)?null:v; }catch(e){ return null; }
+  }
+  function setShopBudgetLimitLocal(v){
+    try{ if (v===null) localStorage.removeItem("bkk-shop-budget-limit"); else localStorage.setItem("bkk-shop-budget-limit", String(v)); }catch(e){}
+  }
+  function setShopBudgetLimit(v){
+    shopBudgetLimit = v;
+    if (db){
+      db.collection("meta").doc("shopBudget").set({limit: v}).catch(function(){});
+    } else {
+      setShopBudgetLimitLocal(v);
+    }
+    renderShopBudget();
+  }
+  function renderShopBudget(){
+    var box = document.getElementById("shop-budget-card");
+    if (!box) return;
+    var spent = 0;
+    state.shopping.forEach(function(s){ if (s.spent) spent += Number(s.spent); });
+    var over = (shopBudgetLimit!==null && spent>shopBudgetLimit);
+    var html = '<div class="budget-row total" style="padding-top:0; border-top:none;"><span class="lbl">購物目前花費</span><span class="amt" style="color:'+(over?'var(--coral)':'var(--teal)')+'">฿'+fmtTHB(spent)+'</span></div>';
+    html += '<div class="rate-row" style="margin-top:10px; padding-top:10px;">購物預算 <input type="number" id="shop-budget-input" min="0" step="100" placeholder="不限" value="'+(shopBudgetLimit!==null?shopBudgetLimit:'')+'"> THB'
+      + (shopBudgetLimit!==null
+          ? ('<span class="twd-hint" style="color:'+(over?'var(--coral)':'var(--ink-faint)')+'">'+(over ? '已超出 ฿'+fmtTHB(spent-shopBudgetLimit) : '剩餘 ฿'+fmtTHB(shopBudgetLimit-spent))+'</span>')
+          : '<span class="twd-hint">輸入預算後超支會變色提醒</span>')
+      + '</div>';
+    box.innerHTML = html;
+    var input = document.getElementById("shop-budget-input");
+    if (input){
+      input.addEventListener("change", function(){
+        var v = input.value==="" ? null : Number(input.value);
+        setShopBudgetLimit(v);
+      });
+    }
   }
   function renderBudget(){
     var box = document.getElementById("budget-card");
@@ -1330,6 +1372,7 @@
         + '<div class="field"><label>項目名稱</label><input class="ie-title" type="text" value="'+escapeHtml(s.title||"")+'" maxlength="60"></div>'
       + '</div>'
       + '<div class="field"><label>備註（選填，支援 {b}粗體{/b}／{c:red}顏色{/c}／{a:網址}連結{/a} 標記）</label><textarea class="ie-note" rows="3">'+escapeHtml(s.note||"")+'</textarea></div>'
+      + '<div class="field"><label>🌐 地圖搜尋關鍵字（選填，留空就用項目名稱查）</label><input class="ie-mapquery" type="text" value="'+escapeHtml(s.mapQuery||"")+'" maxlength="120" placeholder="例如：完整店名、地址，或飯店英文名"></div>'
       + '<div class="edit-form-btns"><button type="button" class="btn primary ie-save" data-id="'+s.id+'">儲存</button><button type="button" class="btn ghost ie-cancel">取消</button></div>'
       + '</div>';
   }
@@ -1374,7 +1417,7 @@
         if (s.note) html += '<div class="itin-note">'+renderRichNote(s.note)+'</div>';
         if (s.cat !== 'move'){
           html += '<div class="stop-links">';
-          html += '<button type="button" class="map-open-btn" data-title="'+escapeHtml(s.title)+'" aria-label="在地圖上查看「'+escapeHtml(s.title)+'」">🌐 地圖</button>';
+          html += '<button type="button" class="map-open-btn" data-title="'+escapeHtml(s.mapQuery||s.title)+'" data-label="'+escapeHtml(s.title)+'" aria-label="在地圖上查看「'+escapeHtml(s.title)+'」">🌐 地圖</button>';
           if (s.links && s.links.length){
             html += s.links.map(function(l){
               return '<a href="'+l.url+'" target="_blank" rel="noopener">🔗 '+escapeHtml(l.label)+'</a>';
@@ -1406,7 +1449,7 @@
     tl.querySelectorAll(".map-open-btn").forEach(function(btn){
       btn.addEventListener("click", function(e){
         e.stopPropagation();
-        openMapModal(btn.dataset.title);
+        openMapModal(btn.dataset.title, btn.dataset.label);
       });
     });
     tl.querySelectorAll(".itin-edit").forEach(function(btn){
@@ -1434,7 +1477,8 @@
           cat: form.querySelector(".ie-cat").value,
           time: form.querySelector(".ie-time").value.trim(),
           title: title,
-          note: form.querySelector(".ie-note").value.trim()
+          note: form.querySelector(".ie-note").value.trim(),
+          mapQuery: form.querySelector(".ie-mapquery").value.trim() || null
         };
         editingItinId = null;
         updateItinField(btn.dataset.id, patch);
@@ -1539,6 +1583,7 @@
       if (!title){ document.getElementById("fi-title").focus(); return; }
       var time = document.getElementById("fi-time").value.trim();
       var note = document.getElementById("fi-note").value.trim();
+      var mapQuery = document.getElementById("fi-mapquery").value.trim();
       var entry = {
         day: Number(document.getElementById("fi-day").value),
         cat: document.getElementById("fi-cat").value,
@@ -1546,10 +1591,12 @@
       };
       if (time) entry.time = time;
       if (note) entry.note = note;
+      if (mapQuery) entry.mapQuery = mapQuery;
       addItinItem(entry);
       document.getElementById("fi-title").value = "";
       document.getElementById("fi-time").value = "";
       document.getElementById("fi-note").value = "";
+      document.getElementById("fi-mapquery").value = "";
     });
   }
   function toggleVisited(id){
@@ -1715,6 +1762,7 @@
   /* ---------- shopping render ---------- */
   var OWNER_NAME = {timmy:"火鍋", asan:"阿殤"};
   function renderShopping(){
+    renderShopBudget();
     var wrap = document.getElementById("shop-groups");
     wrap.innerHTML = "";
     var owners = ownerFilter==="all" ? ["timmy","asan"] : [ownerFilter];
@@ -2089,6 +2137,9 @@
       var doc = snap.docs.find(function(d){ return d.id==="budget"; });
       budgetLimit = (doc && doc.data().limit!=null) ? doc.data().limit : null;
       renderBudget();
+      var shopDoc = snap.docs.find(function(d){ return d.id==="shopBudget"; });
+      shopBudgetLimit = (shopDoc && shopDoc.data().limit!=null) ? shopDoc.data().limit : null;
+      renderShopBudget();
     }, function(){}));
 
     unsub.push(db.collection("splits").onSnapshot(function(snap){
@@ -2111,12 +2162,14 @@
         if (syncNote) syncNote.textContent = "同步資料庫連線失敗，目前僅儲存在這個裝置裡。";
         loadLocal();
         budgetLimit = getBudgetLimitLocal();
+        shopBudgetLimit = getShopBudgetLimitLocal();
         renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay); renderBudget(); renderSplit();
       }
     } else {
       if (syncNote) syncNote.textContent = "尚未設定 Firebase，目前僅儲存在這個裝置的瀏覽器裡，換裝置或分享給朋友不會同步。";
       loadLocal();
       budgetLimit = getBudgetLimitLocal();
+      shopBudgetLimit = getShopBudgetLimitLocal();
       renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay); renderBudget(); renderSplit();
     }
     if (!cloudinaryReady()){
