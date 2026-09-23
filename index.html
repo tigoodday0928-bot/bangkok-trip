@@ -322,14 +322,29 @@
   .itin-note a.rt-yellow{color:var(--gold);}
   .itin-note a.rt-orange{color:var(--rt-orange);}
   .itin-note a.rt-brown{color:var(--rt-brown);}
-  .map-wrap{border-radius:14px; overflow:auto; border:1px solid var(--line); background:var(--paper-raised); max-height:76vh; box-shadow:var(--shadow);}
-  .map-img{display:block; width:100%; height:auto; touch-action:pinch-zoom;}
-  .map-hint{font-size:11.5px; color:var(--ink-faint); margin-top:10px; text-align:center; line-height:1.6;}
   .stop-links{display:flex; flex-wrap:wrap; gap:7px; margin-top:8px;}
-  .stop-links a{
+  .stop-links a, .stop-links button.map-open-btn{
     font-size:11.5px; font-weight:600; color:var(--teal); background:var(--teal-wash);
     padding:4px 9px; border-radius:100px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;
   }
+  .stop-links button.map-open-btn{border:none; cursor:pointer; font-family:inherit;}
+  .stop-links button.map-open-btn:hover{filter:brightness(0.96);}
+  .gmap-overlay{
+    position:fixed; inset:0; background:rgba(10,20,18,.86); z-index:100;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .gmap-overlay[hidden]{display:none;}
+  .gmap-modal{
+    background:var(--paper-raised); border-radius:14px; overflow:hidden; width:100%; max-width:480px;
+    box-shadow:0 10px 40px rgba(0,0,0,.4); display:flex; flex-direction:column; max-height:90vh;
+  }
+  .gmap-modal-head{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line);}
+  .gmap-modal-title{font-size:13.5px; font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .gmap-modal-close{flex:none; appearance:none; border:none; background:none; color:var(--ink-faint); font-size:20px; line-height:1; cursor:pointer; padding:2px 6px;}
+  .gmap-modal-close:hover{color:var(--coral);}
+  .gmap-modal iframe{width:100%; height:min(70vh,420px); border:0; display:block;}
+  .gmap-modal-foot{padding:10px 14px; display:flex; justify-content:flex-end; border-top:1px solid var(--line);}
+  .gmap-modal-foot a{font-size:12px; color:var(--teal); font-weight:600; text-decoration:none;}
   .itin-extra-row{display:flex; align-items:flex-end; gap:10px; margin-top:11px; flex-wrap:wrap;}
   .mini-field{display:flex; flex-direction:column; gap:3px;}
   .mini-field span{font-size:10.5px; color:var(--ink-faint); font-weight:600;}
@@ -516,7 +531,6 @@
       <button class="tab-btn" role="tab" data-tab="shop" aria-selected="false">購物清單</button>
       <button class="tab-btn" role="tab" data-tab="split" aria-selected="false">分帳</button>
       <button class="tab-btn" role="tab" data-tab="pack" aria-selected="false">行李清單</button>
-      <button class="tab-btn" role="tab" data-tab="map" aria-selected="false">交通地圖</button>
     </nav>
   </div>
 </header>
@@ -797,15 +811,19 @@
     <div id="pack-cats"></div>
   </section>
 
-  <!-- TRANSIT MAP -->
-  <section class="panel" id="panel-map" role="tabpanel" hidden>
-    <div class="map-wrap">
-      <img src="bts-map.jpg" alt="2025 曼谷交通系統全線圖：MRT / BTS / SRT / APM / BRT Route Map of Bangkok" class="map-img" id="map-img">
-    </div>
-    <p class="map-hint">圖可放大查看細節（雙指縮放或滾動），長按／右鍵可另存到手機。</p>
-  </section>
 
 </main>
+
+<div class="gmap-overlay" id="gmap-overlay" hidden>
+  <div class="gmap-modal">
+    <div class="gmap-modal-head">
+      <span class="gmap-modal-title" id="gmap-modal-title"></span>
+      <button class="gmap-modal-close" id="gmap-modal-close" type="button" aria-label="關閉地圖">×</button>
+    </div>
+    <iframe id="gmap-modal-frame" src="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <div class="gmap-modal-foot"><a id="gmap-modal-external" href="#" target="_blank" rel="noopener">在 Google 地圖 App 開啟 →</a></div>
+  </div>
+</div>
 
 <footer class="foot">曼谷 12/24 → 12/28・祝這趟把洽圖洽逛個過癮 🎄</footer>
 
@@ -1030,7 +1048,7 @@
   tabBtns.forEach(function(btn){
     btn.addEventListener("click", function(){
       tabBtns.forEach(function(b){ b.setAttribute("aria-selected", b===btn ? "true":"false"); });
-      ["home","itin","shop","split","pack","map"].forEach(function(key){
+      ["home","itin","shop","split","pack"].forEach(function(key){
         document.getElementById("panel-"+key).hidden = (key !== btn.dataset.tab);
       });
     });
@@ -1055,6 +1073,34 @@
 
   /* ---------- checkmark svg ---------- */
   var CHECK_SVG = '<svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  /* ---------- google map modal (itinerary spots) ---------- */
+  function openMapModal(title){
+    var overlay = document.getElementById("gmap-overlay");
+    var frame = document.getElementById("gmap-modal-frame");
+    var titleEl = document.getElementById("gmap-modal-title");
+    var extLink = document.getElementById("gmap-modal-external");
+    if (!overlay || !frame) return;
+    var q = encodeURIComponent(title + " Bangkok");
+    frame.src = "https://maps.google.com/maps?q=" + q + "&z=16&output=embed";
+    if (titleEl) titleEl.textContent = title;
+    if (extLink) extLink.href = "https://www.google.com/maps/search/?api=1&query=" + q;
+    overlay.hidden = false;
+  }
+  function closeMapModal(){
+    var overlay = document.getElementById("gmap-overlay");
+    var frame = document.getElementById("gmap-modal-frame");
+    if (!overlay) return;
+    overlay.hidden = true;
+    if (frame) frame.src = "";
+  }
+  (function wireMapModal(){
+    var overlay = document.getElementById("gmap-overlay");
+    var closeBtn = document.getElementById("gmap-modal-close");
+    if (closeBtn) closeBtn.addEventListener("click", closeMapModal);
+    if (overlay) overlay.addEventListener("click", function(e){ if (e.target===overlay) closeMapModal(); });
+    document.addEventListener("keydown", function(e){ if (e.key==="Escape") closeMapModal(); });
+  })();
 
   /* ---------- budget ---------- */
   function getRate(){
@@ -1326,7 +1372,16 @@
         html += '</div>';
         html += '<div class="itin-title">'+escapeHtml(s.title)+'</div>';
         if (s.note) html += '<div class="itin-note">'+renderRichNote(s.note)+'</div>';
-        if (s.links && s.links.length){
+        if (s.cat !== 'move'){
+          html += '<div class="stop-links">';
+          html += '<button type="button" class="map-open-btn" data-title="'+escapeHtml(s.title)+'" aria-label="在地圖上查看「'+escapeHtml(s.title)+'」">🌐 地圖</button>';
+          if (s.links && s.links.length){
+            html += s.links.map(function(l){
+              return '<a href="'+l.url+'" target="_blank" rel="noopener">🔗 '+escapeHtml(l.label)+'</a>';
+            }).join("");
+          }
+          html += '</div>';
+        } else if (s.links && s.links.length){
           html += '<div class="stop-links">' + s.links.map(function(l){
             return '<a href="'+l.url+'" target="_blank" rel="noopener">🔗 '+escapeHtml(l.label)+'</a>';
           }).join("") + '</div>';
@@ -1346,6 +1401,12 @@
       inp.addEventListener("change", function(){
         var v = inp.value==="" ? null : Number(inp.value);
         updateItinField(inp.dataset.id, {expense: v});
+      });
+    });
+    tl.querySelectorAll(".map-open-btn").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        openMapModal(btn.dataset.title);
       });
     });
     tl.querySelectorAll(".itin-edit").forEach(function(btn){
