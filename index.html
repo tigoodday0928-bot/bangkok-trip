@@ -323,6 +323,19 @@
   .itin-note a.rt-yellow{color:var(--gold);}
   .itin-note a.rt-orange{color:var(--rt-orange);}
   .itin-note a.rt-brown{color:var(--rt-brown);}
+  .itin-meta-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .itin-meta-chip{
+    display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700;
+    padding:3px 9px; border-radius:100px; font-family:var(--font-mono);
+  }
+  .itin-meta-chip.dur{background:var(--coral-wash); color:var(--coral);}
+  .itin-meta-chip.stay{background:var(--gold-wash); color:var(--gold);}
+  .itin-action-zone{
+    margin-top:12px; padding-top:12px; border-top:1px dashed var(--line);
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .itin-action-zone .stop-links{margin-top:0;}
+  .itin-action-zone .photo-controls{margin-top:0;}
   .stop-links{display:flex; flex-wrap:wrap; gap:7px; margin-top:8px;}
   .stop-links a, .stop-links button.map-open-btn{
     font-size:11.5px; font-weight:600; color:var(--teal); background:var(--teal-wash);
@@ -346,6 +359,17 @@
   .gmap-modal iframe{width:100%; height:min(70vh,420px); border:0; display:block;}
   .gmap-modal-foot{padding:10px 14px; display:flex; justify-content:flex-end; border-top:1px solid var(--line);}
   .gmap-modal-foot a{font-size:12px; color:var(--teal); font-weight:600; text-decoration:none;}
+
+  /* scroll to top */
+  .scroll-top-btn{
+    position:fixed; right:18px; bottom:22px; width:44px; height:44px; border-radius:50%;
+    background:var(--teal); color:#fff; border:none; box-shadow:var(--shadow); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; z-index:60;
+    opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity .2s ease, transform .2s ease;
+  }
+  .scroll-top-btn.visible{opacity:1; transform:translateY(0); pointer-events:auto;}
+  .scroll-top-btn svg{width:20px; height:20px;}
+  .scroll-top-btn:hover{filter:brightness(1.06);}
   .itin-extra-row{display:flex; align-items:flex-end; gap:10px; margin-top:11px; flex-wrap:wrap;}
   .mini-field{display:flex; flex-direction:column; gap:3px;}
   .mini-field span{font-size:10.5px; color:var(--ink-faint); font-weight:600;}
@@ -507,6 +531,29 @@
   .pack-cat{margin-bottom:22px;}
   .pack-cat h3{font-size:14px; font-weight:700; color:var(--ink); margin-bottom:2px; font-family:var(--font-display);}
   .pack-cat .cat-progress{font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin-bottom:6px;}
+  .pack-legend{display:flex; flex-wrap:wrap; gap:14px; font-size:11.5px; color:var(--ink-faint); margin-bottom:14px;}
+  .pack-legend span{display:inline-flex; align-items:center; gap:5px;}
+  .pack-legend .dot{width:10px; height:10px; border-radius:3px; display:inline-block; flex:none;}
+  .pack-row{display:flex; align-items:flex-start; gap:10px; padding:11px 4px; border-bottom:1px solid var(--line);}
+  .pack-row:last-child{border-bottom:none;}
+  .pack-checks{display:flex; gap:5px; flex:none; margin-top:1px;}
+  .pack-check{
+    appearance:none; width:20px; height:20px; border-radius:6px; border:1.6px solid var(--ink-faint);
+    display:flex; align-items:center; justify-content:center; background:var(--paper-raised); cursor:pointer; padding:0;
+  }
+  .pack-check svg{width:12px; height:12px; opacity:0; transform:scale(.6); transition:.12s; stroke:var(--paper-raised);}
+  .pack-check.checked{background:var(--teal); border-color:var(--teal);}
+  .pack-check.checked svg{opacity:1; transform:scale(1);}
+  .pack-check[data-owner="asan"].checked{background:var(--violet); border-color:var(--violet);}
+  .pack-body{flex:1; min-width:0;}
+  .pack-title{font-size:14.5px; font-weight:600; color:var(--ink);}
+  .pack-title.both-done{color:var(--ink-faint); text-decoration:line-through; text-decoration-color:var(--ink-faint);}
+  .pack-note{font-size:12.5px; color:var(--ink-soft); margin-top:3px; line-height:1.5;}
+  .pack-actions{flex:none; display:flex; gap:2px;}
+  .pack-edit, .pack-del{appearance:none; border:none; background:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 5px; line-height:1;}
+  .pack-edit:hover{color:var(--teal);}
+  .pack-del:hover{color:var(--coral);}
+  .pack-edit-form{padding:6px 4px 12px;}
 
   footer.foot{
     text-align:center; font-size:11.5px; color:var(--ink-faint); padding:24px 20px calc(24px + env(safe-area-inset-bottom,0px));
@@ -686,6 +733,10 @@
           </div>
         </div>
         <div class="field">
+          <label for="fi-duration">⏱ 關鍵時間（選填，例如「約45分鐘」或「停留1.5小時」）</label>
+          <input id="fi-duration" type="text" placeholder="例如：約45分鐘" maxlength="30">
+        </div>
+        <div class="field">
           <label for="fi-note">備註（選填）</label>
           <input id="fi-note" type="text" placeholder="交通方式／提醒事項" maxlength="200">
         </div>
@@ -826,9 +877,35 @@
 
   <!-- PACKING -->
   <section class="panel" id="panel-pack" role="tabpanel" hidden>
-    <div class="progress-row" style="margin-bottom:20px">
+    <details class="add-form">
+      <summary>+ 新增行李項目</summary>
+      <div class="add-form-body">
+        <div class="field-row">
+          <div class="field">
+            <label for="pk-cat">分類</label>
+            <input id="pk-cat" list="pk-cat-list" type="text" placeholder="例如：衣物" maxlength="30">
+            <datalist id="pk-cat-list"></datalist>
+          </div>
+          <div class="field">
+            <label for="pk-name">項目名稱</label>
+            <input id="pk-name" type="text" placeholder="例如：太陽眼鏡" maxlength="60">
+          </div>
+        </div>
+        <div class="field">
+          <label for="pk-note">備註（選填）</label>
+          <input id="pk-note" type="text" placeholder="數量／提醒事項" maxlength="120">
+        </div>
+        <button class="btn primary block" id="pk-submit">加入清單</button>
+      </div>
+    </details>
+
+    <div class="progress-row" style="margin-bottom:14px">
       <div class="progress-track"><div class="progress-fill" id="pack-fill" style="width:0%"></div></div>
       <div class="progress-label" id="pack-label">0/0</div>
+    </div>
+    <div class="pack-legend">
+      <span><span class="dot" style="background:var(--teal)"></span>火鍋</span>
+      <span><span class="dot" style="background:var(--violet)"></span>阿殤</span>
     </div>
     <div id="pack-cats"></div>
   </section>
@@ -846,6 +923,10 @@
     <div class="gmap-modal-foot"><a id="gmap-modal-external" href="#" target="_blank" rel="noopener">在 Google 地圖 App 開啟 →</a></div>
   </div>
 </div>
+
+<button type="button" class="scroll-top-btn" id="scroll-top-btn" aria-label="回到頁首">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+</button>
 
 <footer class="foot">曼谷 12/24 → 12/28・祝這趟把洽圖洽逛個過癮 🎄</footer>
 
@@ -910,20 +991,20 @@
     var raw = [
       [0,[
         {cat:'move', title:'家 → 桃機', note:'10:00 出發\n10:30 第一航廈'},
-        {cat:'move', time:'13:55', title:'✈️ 泰國航空 TG633', note:'(台灣時間)13:55 桃園機場 第一航廈→\n(泰國時間)16:50 蘇凡納布機場\n{c:red}★{/c}{c:teal}希望有聖誕節禮物娃娃{/c}'},
-        {cat:'move', title:'蘇凡納布機場 → 藝術酒店 Arte Hotel', note:'機場快線(ARL)：搭乘{c:red}25分鐘{/c}到{c:teal}Phaya Thai{/c}，轉乘至{c:teal} BTS {/c}搭乘{c:red}12分鐘{/c}至{c:teal}Asok{/c}，步行{c:red}8分鐘{/c}抵達\n機場接送：預計車程{c:red}30分鐘{/c}至{c:red}1時20分{/c}(如有塞車)'},
+        {cat:'move', time:'13:55', duration:'3h55m', title:'✈️ 泰國航空 TG633', note:'(台灣時間)13:55 桃園機場 第一航廈→\n(泰國時間)16:50 蘇凡納布機場\n{c:red}★{/c}{c:teal}希望有聖誕節禮物娃娃{/c}'},
+        {cat:'move', duration:'約45分鐘', title:'蘇凡納布機場 → 藝術酒店 Arte Hotel', note:'機場快線(ARL)：搭乘{c:red}25分鐘{/c}到{c:teal}Phaya Thai{/c}，轉乘至{c:teal} BTS {/c}搭乘{c:red}12分鐘{/c}至{c:teal}Asok{/c}，步行{c:red}8分鐘{/c}抵達\n機場接送：預計車程{c:red}30分鐘{/c}至{c:red}1時20分{/c}(如有塞車)'},
         {cat:'stay', title:'Check in - 藝術酒店 Arte Hotel', note:'雙人房'},
-        {cat:'move', title:'飯店 → Terminal 21', note:'步行{c:red}5分鐘{/c}抵達'},
+        {cat:'move', duration:'約5分鐘', title:'飯店 → Terminal 21', note:'步行{c:red}5分鐘{/c}抵達'},
         {cat:'sight', title:'Terminal 21', note:'晚餐可至商店街~'},
-        {cat:'move', title:'Terminal 21 → 飯店', note:'步行{c:red}5分鐘{/c}{c:default}抵達{/c}'}
+        {cat:'move', duration:'約5分鐘', title:'Terminal 21 → 飯店', note:'步行{c:red}5分鐘{/c}{c:default}抵達{/c}'}
       ]],
       [1,[
         {cat:'eat', title:'早餐'},
         {cat:'move', title:'飯店 → 大皇宮', note:' {b}{c:teal}BTS Asoek{/c}{/b}{c:teal}站{/c}→搭乘約{c:red}9分鐘{/c}至{b}{c:teal}Siam{/c}{/b}{c:teal}站{/c}{c:default}，由此{/c}步行換線至{c:purple}Silom Line{/c}→搭乘{c:red}13分鐘{/c}至{c:purple}Saphan Taksin{/c}站，從2號出口方向前往碼頭搭船\n★搭乘{b}{c:blue}藍旗{/c}{/b}({c:blue}Chao Phraya Tourist Boat 營運的渡輪{/c})船，每趟50泰銖/人；或者可買{a:https://www.klook.com/zh-TW/activity/12514-chao-phraya-hop-on-hop-off-day-pass-bangkok/?aid=57&aff_ext=spot_bangkok&utm_medium=affiliate-alwayson&utm_source=non-network&utm_campaign=57&utm_term=}{c:brown}一日券{/c}{/a}'},
-        {cat:'sight', title:'大皇宮（預計 2.5hr）', note:'• 門票售價：{b}成人票 ${/b}{b}{c:red}500{/c}{/b}{b} 泰銖{/b}\n• 營業時間：{b}周一～周日 08:30～15:30{/b}\n• 衣著：不可穿短褲、短裙、洞洞褲、無袖背心、露肩露背裝。\n• 鞋子：不可穿拖鞋、夾腳拖或涼鞋，若硬要穿需要穿襪子。'},
-        {cat:'move', title:'大皇宮 → 松瓦路', note:'從{c:purple}The Chang (N9碼頭){/c}搭乘{b}{c:blue}藍旗{/c}{/b}船約{c:red}11分鐘{/c}至 {c:purple}Ratchwong站(N5碼頭){/c}→步行{c:red}8分鐘{/c}至{b}{c:orange}松瓦路{/c}{/b}'},
+        {cat:'sight', duration:'預計 2.5小時', title:'大皇宮', note:'• 門票售價：{b}成人票 ${/b}{b}{c:red}500{/c}{/b}{b} 泰銖{/b}\n• 營業時間：{b}周一～周日 08:30～15:30{/b}\n• 衣著：不可穿短褲、短裙、洞洞褲、無袖背心、露肩露背裝。\n• 鞋子：不可穿拖鞋、夾腳拖或涼鞋，若硬要穿需要穿襪子。'},
+        {cat:'move', duration:'約19分鐘', title:'大皇宮 → 松瓦路', note:'從{c:purple}The Chang (N9碼頭){/c}搭乘{b}{c:blue}藍旗{/c}{/b}船約{c:red}11分鐘{/c}至 {c:purple}Ratchwong站(N5碼頭){/c}→步行{c:red}8分鐘{/c}至{b}{c:orange}松瓦路{/c}{/b}'},
         {cat:'eat', title:'午餐・松瓦路', note:'{b}{c:purple}咖啡店：{/c}{/b}\n1.{b} a pink rabbit + Bob{/b}\n2.{b} 伏特加荔枝冰淇淋：{/b}{a:https://share.google/TlPcV15VHJg4QBqKL}Nuury Chestnut Ice Cream{/a}{b}\n3. {/b}Talat Noi區：{b}Mother Roaster\n{/b}{b}{c:purple}餐廳：{/c}{/b}\nNai Soie Beef Noodle (牛麵王)\n{b}{c:purple}選物店：{/c}{/b}\n{b}Garçon Dept\nSAAN SONGWAT{/b}', links:[{label:'松瓦路一日散策', url:'https://cjfuntravel.com/2025/01/%E3%80%90%E6%B3%B0%E5%9C%8B%E6%9B%BC%E8%B0%B7%E3%80%91%E8%80%81%E5%9F%8E%E5%8D%80%E6%9D%BE%E7%93%A6%E8%B7%AF%E4%B8%80%E6%97%A5%E6%95%A3%E7%AD%96%EF%BC%8C%E5%BE%92%E6%AD%A5%E5%B0%8F%E6%97%85%E8%A1%8C/'},{label:'Talat Noi 散策', url:'https://wanderlustannie.com.tw/talat-noi/'}]},
-        {cat:'move', title:'松瓦路 → ICONSIAM', note:'從松瓦路步行回 {c:purple}Ratchawong站(N5碼頭){/c}，搭乘{b}{c:blue}藍旗{/c}{/b}船約{c:red}12分鐘{/c}至{c:purple} ICONSIAM{/c}'},
+        {cat:'move', duration:'約12分鐘', title:'松瓦路 → ICONSIAM', note:'從松瓦路步行回 {c:purple}Ratchawong站(N5碼頭){/c}，搭乘{b}{c:blue}藍旗{/c}{/b}船約{c:red}12分鐘{/c}至{c:purple} ICONSIAM{/c}'},
         {cat:'sight', title:'昭披耶河白蘭花號遊船', note:'{b}夕陽遊船{/b}＋{b}國際自助餐（17:00 - 18:30）{/b}{c:blue}\n16:00~16:45{/c}{c:red} ICONSIAM 4號碼頭 {/c}{c:default}報到{/c}\n{c:blue}18:45{/c} 返回 ICONSIAM\n{a:https://res.klook.com/image/upload/v1743486799/admin-markdown/bfipc8ihltswaqf4s9bq.jpg}菜單{/a}', links:[{label:'船票／行程', url:'https://www.klook.com/zh-TW/activity/12514-chao-phraya-hop-on-hop-off-day-pass-bangkok/'}]},
         {cat:'sight', title:'ICONSIAM 暹羅天地', note:'吃晚餐、補逛跟買伴手禮(巧克力芒果乾)\n買杯泰奶，20:00前15分鐘至戶外\n找好位置看水舞秀', links:[{label:'景點介紹', url:'https://www.wendyjourney.com/iconsiam/'}]},
         {cat:'move', title:'ICONSIAM → 飯店', note:'搭乘{c:yellow}金色線{/c}轉BTS回飯店\n回去按摩腳備戰明日'},
@@ -933,11 +1014,11 @@
         {cat:'eat', title:'早餐', note:'預計 8:40 出門'},
         {cat:'move', title:'飯店 → Central World', note:'Klook 一日遊集合'},
         {cat:'move', title:'Central World Hug Thai Zone 集合', note:'★請於活動開始前15分鐘抵達。\n9:30 出發'},
-        {cat:'sight', title:'丹嫩莎朵水上市場', note:'預計 11:30 抵達\n{b}停留時間：1小時30分{/b}'},
+        {cat:'sight', duration:'停留 1.5小時', title:'丹嫩莎朵水上市場', note:'預計 11:30 抵達'},
         {cat:'move', title:'丹嫩莎朵 → The Buffalo Café'},
         {cat:'sight', title:'The Buffalo Café', note:'自由活動。\n可以品嚐咖啡與手工芒果、榴槤冰淇淋'},
         {cat:'move', title:'The Buffalo Café → 美功鐵道市場'},
-        {cat:'sight', title:'美功鐵道市場', note:'{b}停留時間：1小時{/b}\n在美功鐵路 (Maeklong Railway Market，又名 Talad Rom Hoop) 體驗傳統泰國市場'},
+        {cat:'sight', duration:'停留 1小時', title:'美功鐵道市場', note:'在美功鐵路 (Maeklong Railway Market，又名 Talad Rom Hoop) 體驗傳統泰國市場'},
         {cat:'move', title:'美功鐵道市場 → Central World', note:'預計 18:00 出發回程'}
       ]],
       [3,[
@@ -947,15 +1028,15 @@
         {cat:'move', title:'洽圖洽 → Siam Square'},
         {cat:'sight', title:'Siam Square 步行街', links:[{label:'逛街指南', url:'https://kenji.life/bkk-bts-siam/'}]},
         {cat:'move', title:'Siam Square → 飯店休息、整理'},
-        {cat:'move', title:'飯店 → 朱拉隆功夜市', note:'步行{c:red}7分鐘{/c}至 {c:teal}BTS Asok 站{/c}→搭乘{c:red}28分鐘{/c}至 {c:teal}Phahonyothin 24{/c}{c:default}，步行{/c}{c:red}5分鐘{/c}{c:default}抵達{/c}'},
+        {cat:'move', duration:'約40分鐘', title:'飯店 → 朱拉隆功夜市', note:'步行{c:red}7分鐘{/c}至 {c:teal}BTS Asok 站{/c}→搭乘{c:red}28分鐘{/c}至 {c:teal}Phahonyothin 24{/c}{c:default}，步行{/c}{c:red}5分鐘{/c}{c:default}抵達{/c}'},
         {cat:'eat', title:'朱拉隆功大學夜市一條街'}
       ]],
       [4,[
         {cat:'stay', title:'退房・藝術酒店 Arte Hotel'},
         {cat:'move', title:'9:00 起床・10:00 出門'},
         {cat:'eat', title:'早餐', note:'記得在7-11買好好喝泰奶'},
-        {cat:'move', title:'曼谷 → 蘇凡納布機場', note:'機場快線(ARL)：搭乘{c:teal} BTS {/c}{c:red}12分鐘{/c}至{c:teal}Phaya Thai{/c}{c:default}，再轉搭 ARL{/c}{c:teal} {/c}{c:red}25分鐘{/c}到機場'},
-        {cat:'move', time:'12:40', title:'✈️ 泰國航空 TG634', note:'(泰國時間)12:40 蘇凡納布機場 →\n(台灣時間)17:20 桃園機場 第一航廈'},
+        {cat:'move', duration:'約37分鐘', title:'曼谷 → 蘇凡納布機場', note:'機場快線(ARL)：搭乘{c:teal} BTS {/c}{c:red}12分鐘{/c}至{c:teal}Phaya Thai{/c}{c:default}，再轉搭 ARL{/c}{c:teal} {/c}{c:red}25分鐘{/c}到機場'},
+        {cat:'move', time:'12:40', duration:'3h40m', title:'✈️ 泰國航空 TG634', note:'(泰國時間)12:40 蘇凡納布機場 →\n(台灣時間)17:20 桃園機場 第一航廈'},
         {cat:'stay', title:'溫暖的家', note:'旅程結束 🎄'}
       ]],
     ];
@@ -999,7 +1080,7 @@
     {cat:"盥洗保養", items:["牙刷牙膏","卸妝洗面乳","防曬乳","化妝水／乳液","隱形眼鏡用品","髮圈／梳子"]},
     {cat:"藥品保健", items:["腸胃藥","感冒藥","止痛藥","個人慢性藥物","OK繃","暈車藥"]},
     {cat:"其他隨身", items:["環保購物袋（戰利品用）","雨傘／雨衣","小包面紙／濕紙巾","筆（入境卡填寫用）"]}
-  ].map(function(g){ return {cat:g.cat, items:g.items.map(function(n,i){ return {id:g.cat+"-"+i, name:n, checked:false}; })}; });
+  ].map(function(g){ return {cat:g.cat, items:g.items.map(function(n,i){ return {id:g.cat+"-"+i, name:n, note:"", checkedTimmy:false, checkedAsan:false}; })}; });
 
   /* ---------- state ---------- */
   var state = {
@@ -1122,6 +1203,20 @@
     if (closeBtn) closeBtn.addEventListener("click", closeMapModal);
     if (overlay) overlay.addEventListener("click", function(e){ if (e.target===overlay) closeMapModal(); });
     document.addEventListener("keydown", function(e){ if (e.key==="Escape") closeMapModal(); });
+  })();
+
+  (function wireScrollTopBtn(){
+    var btn = document.getElementById("scroll-top-btn");
+    if (!btn) return;
+    var toggle = function(){
+      if (window.scrollY > 260) btn.classList.add("visible");
+      else btn.classList.remove("visible");
+    };
+    window.addEventListener("scroll", toggle, {passive:true});
+    toggle();
+    btn.addEventListener("click", function(){
+      window.scrollTo({top:0, behavior:"smooth"});
+    });
   })();
 
   /* ---------- budget ---------- */
@@ -1275,41 +1370,182 @@
   }
 
   /* ---------- packing render ---------- */
+  var editingPackId = null;
+  function flattenPackingFlat(){
+    var out = [];
+    state.packing.forEach(function(g){ g.items.forEach(function(it){ out.push(it); }); });
+    return out;
+  }
+  function regroupPackingFromFlat(items){
+    var byCat = {};
+    items.forEach(function(it){
+      var c = it.cat || "其他";
+      if (!byCat[c]) byCat[c] = [];
+      byCat[c].push(it);
+    });
+    return Object.keys(byCat).map(function(k){ return {cat:k, items:byCat[k]}; });
+  }
+  function refreshPackCatList(){
+    var dl = document.getElementById("pk-cat-list");
+    if (!dl) return;
+    dl.innerHTML = state.packing.map(function(g){ return '<option value="'+escapeHtml(g.cat)+'"></option>'; }).join("");
+  }
+  function packEditFormHtml(it){
+    var cats = state.packing.map(function(g){ return g.cat; });
+    if (cats.indexOf(it.cat) === -1) cats.push(it.cat);
+    var catOpts = cats.map(function(c){
+      return '<option value="'+escapeHtml(c)+'"'+(c===it.cat?' selected':'')+'>'+escapeHtml(c)+'</option>';
+    }).join("");
+    return '<div class="edit-form pack-edit-form" data-id="'+it.id+'">'
+      + '<div class="field"><label>分類</label><select class="pke-cat">'+catOpts+'</select></div>'
+      + '<div class="field"><label>項目名稱</label><input class="pke-name" type="text" value="'+escapeHtml(it.name||"")+'" maxlength="60"></div>'
+      + '<div class="field"><label>備註（選填）</label><input class="pke-note" type="text" value="'+escapeHtml(it.note||"")+'" maxlength="120"></div>'
+      + '<div class="edit-form-btns"><button type="button" class="btn primary pke-save" data-id="'+it.id+'">儲存</button><button type="button" class="btn ghost pke-cancel">取消</button></div>'
+      + '</div>';
+  }
   function renderPacking(){
     var wrap = document.getElementById("pack-cats");
     wrap.innerHTML = "";
+    refreshPackCatList();
     var totalDone = 0, totalAll = 0;
     state.packing.forEach(function(g){
-      var gDone = g.items.filter(function(i){return i.checked;}).length;
-      totalDone += gDone; totalAll += g.items.length;
+      var gAll = g.items.length * 2;
+      var gDone = g.items.reduce(function(n,it){ return n + (it.checkedTimmy?1:0) + (it.checkedAsan?1:0); }, 0);
+      totalDone += gDone; totalAll += gAll;
       var sec = document.createElement("div");
       sec.className = "pack-cat card";
       sec.style.padding = "14px 16px 6px";
-      var head = '<h3>'+escapeHtml(g.cat)+'</h3><div class="cat-progress">'+gDone+'/'+g.items.length+'</div>';
+      var head = '<h3>'+escapeHtml(g.cat)+'</h3><div class="cat-progress">'+gDone+'/'+gAll+'</div>';
       var rows = g.items.map(function(it){
-        return '<div class="check-row'+(it.checked?' done':'')+'" data-id="'+it.id+'"><div class="check-box">'+CHECK_SVG+'</div><div class="check-body"><div class="check-title">'+escapeHtml(it.name)+'</div></div></div>';
+        if (it.id === editingPackId) return packEditFormHtml(it);
+        var bothDone = it.checkedTimmy && it.checkedAsan;
+        return '<div class="pack-row" data-id="'+it.id+'">'
+          + '<div class="pack-checks">'
+            + '<button type="button" class="pack-check'+(it.checkedTimmy?' checked':'')+'" data-id="'+it.id+'" data-owner="timmy" aria-pressed="'+(it.checkedTimmy?"true":"false")+'" aria-label="火鍋：標記「'+escapeHtml(it.name)+'」已收">'+CHECK_SVG+'</button>'
+            + '<button type="button" class="pack-check'+(it.checkedAsan?' checked':'')+'" data-id="'+it.id+'" data-owner="asan" aria-pressed="'+(it.checkedAsan?"true":"false")+'" aria-label="阿殤：標記「'+escapeHtml(it.name)+'」已收">'+CHECK_SVG+'</button>'
+          + '</div>'
+          + '<div class="pack-body">'
+            + '<div class="pack-title'+(bothDone?' both-done':'')+'">'+escapeHtml(it.name)+'</div>'
+            + (it.note ? '<div class="pack-note">'+escapeHtml(it.note)+'</div>' : '')
+          + '</div>'
+          + '<div class="pack-actions">'
+            + '<button type="button" class="pack-edit" aria-label="編輯「'+escapeHtml(it.name)+'」" data-id="'+it.id+'">✎</button>'
+            + '<button type="button" class="pack-del" aria-label="刪除「'+escapeHtml(it.name)+'」" data-id="'+it.id+'">×</button>'
+          + '</div>'
+        + '</div>';
       }).join("");
       sec.innerHTML = head + rows;
-      sec.querySelectorAll(".check-row").forEach(function(row){
-        row.addEventListener("click", function(){ togglePacking(row.dataset.id); });
+      sec.querySelectorAll(".pack-check").forEach(function(btn){
+        btn.addEventListener("click", function(e){
+          e.stopPropagation();
+          togglePacking(btn.dataset.id, btn.dataset.owner);
+        });
+      });
+      sec.querySelectorAll(".pack-edit").forEach(function(btn){
+        btn.addEventListener("click", function(e){
+          e.stopPropagation();
+          editingPackId = btn.dataset.id;
+          renderPacking();
+        });
+      });
+      sec.querySelectorAll(".pack-del").forEach(function(btn){
+        btn.addEventListener("click", function(e){
+          e.stopPropagation();
+          deletePackingItem(btn.dataset.id);
+        });
+      });
+      sec.querySelectorAll(".pke-cancel").forEach(function(btn){
+        btn.addEventListener("click", function(e){
+          e.stopPropagation();
+          editingPackId = null;
+          renderPacking();
+        });
+      });
+      sec.querySelectorAll(".pke-save").forEach(function(btn){
+        btn.addEventListener("click", function(e){
+          e.stopPropagation();
+          var form = btn.closest(".pack-edit-form");
+          var name = form.querySelector(".pke-name").value.trim();
+          if (!name){ form.querySelector(".pke-name").focus(); return; }
+          var patch = {
+            cat: form.querySelector(".pke-cat").value,
+            name: name,
+            note: form.querySelector(".pke-note").value.trim()
+          };
+          editingPackId = null;
+          updatePackingItem(btn.dataset.id, patch);
+        });
       });
       wrap.appendChild(sec);
     });
     document.getElementById("pack-fill").style.width = (totalAll? (totalDone/totalAll*100):0) + "%";
     document.getElementById("pack-label").textContent = totalDone + "/" + totalAll;
   }
-  function togglePacking(id){
+  function togglePacking(id, owner){
     var found;
     state.packing.forEach(function(g){ g.items.forEach(function(it){ if(it.id===id) found=it; }); });
     if (!found) return;
-    var next = !found.checked;
+    var field = owner === "asan" ? "checkedAsan" : "checkedTimmy";
+    var next = !found[field];
     if (db){
-      db.collection("packing").doc(id).update({checked: next}).catch(function(){});
+      var patch = {};
+      patch[field] = next;
+      db.collection("packing").doc(id).update(patch).catch(function(){});
     } else {
-      found.checked = next;
+      found[field] = next;
       saveLocal();
       renderPacking();
     }
+  }
+  function updatePackingItem(id, patch){
+    if (db){
+      db.collection("packing").doc(id).update(patch).catch(function(){});
+    } else {
+      var flat = flattenPackingFlat();
+      flat.forEach(function(it){ if(it.id===id) Object.assign(it, patch); });
+      state.packing = regroupPackingFromFlat(flat);
+      saveLocal();
+    }
+    renderPacking();
+  }
+  function addPackingItemLocal(doc){
+    var flat = flattenPackingFlat();
+    flat.push(doc);
+    state.packing = regroupPackingFromFlat(flat);
+    saveLocal();
+    renderPacking();
+  }
+  function addPackingItem(data){
+    var id = "pack-custom-" + Date.now() + "-" + Math.floor(Math.random()*1000);
+    var doc = Object.assign({id:id, note:"", checkedTimmy:false, checkedAsan:false}, data);
+    if (db){
+      db.collection("packing").doc(id).set(withoutId(doc)).catch(function(){
+        addPackingItemLocal(doc);
+      });
+    } else {
+      addPackingItemLocal(doc);
+    }
+  }
+  function deletePackingItem(id){
+    if (db){
+      db.collection("packing").doc(id).delete().catch(function(){});
+    } else {
+      state.packing = regroupPackingFromFlat(flattenPackingFlat().filter(function(it){ return it.id!==id; }));
+      saveLocal();
+    }
+    renderPacking();
+  }
+  var pkSubmit = document.getElementById("pk-submit");
+  if (pkSubmit){
+    pkSubmit.addEventListener("click", function(){
+      var name = document.getElementById("pk-name").value.trim();
+      if (!name){ document.getElementById("pk-name").focus(); return; }
+      var cat = document.getElementById("pk-cat").value.trim() || "其他";
+      var note = document.getElementById("pk-note").value.trim();
+      addPackingItem({ cat: cat, name: name, note: note });
+      document.getElementById("pk-name").value = "";
+      document.getElementById("pk-note").value = "";
+    });
   }
 
   /* ---------- itinerary render ---------- */
@@ -1357,6 +1593,7 @@
         + '<div class="field"><label>時間（選填）</label><input class="ie-time" type="text" value="'+escapeHtml(s.time||"")+'" maxlength="12"></div>'
         + '<div class="field"><label>項目名稱</label><input class="ie-title" type="text" value="'+escapeHtml(s.title||"")+'" maxlength="60"></div>'
       + '</div>'
+      + '<div class="field"><label>⏱ 關鍵時間（選填，例如「約45分鐘」或「停留1.5小時」）</label><input class="ie-duration" type="text" value="'+escapeHtml(s.duration||"")+'" maxlength="30"></div>'
       + '<div class="field"><label>備註（選填，支援 {b}粗體{/b}／{c:red}顏色{/c}／{a:網址}連結{/a} 標記）</label><textarea class="ie-note" rows="3">'+escapeHtml(s.note||"")+'</textarea></div>'
       + '<div class="field"><label>🌐 地圖搜尋關鍵字（選填，留空就用項目名稱查）</label><input class="ie-mapquery" type="text" value="'+escapeHtml(s.mapQuery||"")+'" maxlength="120" placeholder="例如：完整店名、地址，或飯店英文名"></div>'
       + '<div class="edit-form-btns"><button type="button" class="btn primary ie-save" data-id="'+s.id+'">儲存</button><button type="button" class="btn ghost ie-cancel">取消</button></div>'
@@ -1400,24 +1637,27 @@
         html += '<button class="itin-del" aria-label="刪除「'+escapeHtml(s.title)+'」" data-id="'+s.id+'">×</button>';
         html += '</div>';
         html += '<div class="itin-title">'+escapeHtml(s.title)+'</div>';
-        if (s.note) html += '<div class="itin-note">'+renderRichNote(s.note)+'</div>';
-        if (s.cat !== 'move'){
-          html += '<div class="stop-links">';
-          html += '<button type="button" class="map-open-btn" data-title="'+escapeHtml(s.mapQuery||s.title)+'" data-label="'+escapeHtml(s.title)+'" aria-label="在地圖上查看「'+escapeHtml(s.title)+'」">🌐 地圖</button>';
-          if (s.links && s.links.length){
-            html += s.links.map(function(l){
-              return '<a href="'+l.url+'" target="_blank" rel="noopener">🔗 '+escapeHtml(l.label)+'</a>';
-            }).join("");
-          }
-          html += '</div>';
-        } else if (s.links && s.links.length){
-          html += '<div class="stop-links">' + s.links.map(function(l){
-            return '<a href="'+l.url+'" target="_blank" rel="noopener">🔗 '+escapeHtml(l.label)+'</a>';
-          }).join("") + '</div>';
+        if (s.duration){
+          var durIcon = s.cat==='move' ? '⏱' : '🕐';
+          var durClass = s.cat==='move' ? 'dur' : 'stay';
+          html += '<div class="itin-meta-row"><span class="itin-meta-chip '+durClass+'">'+durIcon+' '+escapeHtml(s.duration)+'</span></div>';
         }
-        html += '<div class="itin-extra-row">';
-        html += '<label class="mini-field"><span>'+CAT_EXPENSE_LABEL[s.cat]+'（THB）</span><input type="number" inputmode="decimal" min="0" step="1" class="expense-input" data-id="'+s.id+'" placeholder="0" value="'+(s.expense!==null&&s.expense!==undefined?s.expense:'')+'"></label>';
+        if (s.note) html += '<div class="itin-note">'+renderRichNote(s.note)+'</div>';
+
+        var linksHtml = '';
+        if (s.cat !== 'move'){
+          linksHtml += '<button type="button" class="map-open-btn" data-title="'+escapeHtml(s.mapQuery||s.title)+'" data-label="'+escapeHtml(s.title)+'" aria-label="在地圖上查看「'+escapeHtml(s.title)+'」">🌐 地圖</button>';
+        }
+        if (s.links && s.links.length){
+          linksHtml += s.links.map(function(l){
+            return '<a href="'+l.url+'" target="_blank" rel="noopener">🔗 '+escapeHtml(l.label)+'</a>';
+          }).join("");
+        }
+
+        html += '<div class="itin-action-zone">';
+        if (linksHtml) html += '<div class="stop-links">'+linksHtml+'</div>';
         html += photoControlsHtml("itinerary", s.id, s.photoUrl);
+        html += '<label class="mini-field"><span>'+CAT_EXPENSE_LABEL[s.cat]+'（THB）</span><input type="number" inputmode="decimal" min="0" step="1" class="expense-input" data-id="'+s.id+'" placeholder="0" value="'+(s.expense!==null&&s.expense!==undefined?s.expense:'')+'"></label>';
         html += '</div>';
       }
       html += '</div>';
@@ -1463,6 +1703,7 @@
           cat: form.querySelector(".ie-cat").value,
           time: form.querySelector(".ie-time").value.trim(),
           title: title,
+          duration: form.querySelector(".ie-duration").value.trim() || null,
           note: form.querySelector(".ie-note").value.trim(),
           mapQuery: form.querySelector(".ie-mapquery").value.trim() || null
         };
@@ -1568,6 +1809,7 @@
       var title = document.getElementById("fi-title").value.trim();
       if (!title){ document.getElementById("fi-title").focus(); return; }
       var time = document.getElementById("fi-time").value.trim();
+      var duration = document.getElementById("fi-duration").value.trim();
       var note = document.getElementById("fi-note").value.trim();
       var mapQuery = document.getElementById("fi-mapquery").value.trim();
       var entry = {
@@ -1576,11 +1818,13 @@
         title: title
       };
       if (time) entry.time = time;
+      if (duration) entry.duration = duration;
       if (note) entry.note = note;
       if (mapQuery) entry.mapQuery = mapQuery;
       addItinItem(entry);
       document.getElementById("fi-title").value = "";
       document.getElementById("fi-time").value = "";
+      document.getElementById("fi-duration").value = "";
       document.getElementById("fi-note").value = "";
       document.getElementById("fi-mapquery").value = "";
     });
@@ -2096,7 +2340,7 @@
     var out = [];
     groups.forEach(function(g){
       g.items.forEach(function(it){
-        out.push({id: it.id, name: it.name, checked: it.checked, cat: g.cat});
+        out.push({id: it.id, name: it.name, note: it.note || "", checkedTimmy: !!it.checkedTimmy, checkedAsan: !!it.checkedAsan, cat: g.cat});
       });
     });
     return out;
