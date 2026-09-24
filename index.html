@@ -174,8 +174,9 @@
   .leg-flightno{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
   .leg-note{
     margin-top:10px; padding:8px 10px; background:var(--gold-wash); color:var(--gold);
-    border-radius:8px; font-size:12px; font-weight:600; display:flex; gap:6px; align-items:flex-start;
+    border-radius:8px; font-size:12px; font-weight:600; line-height:1.5; display:flex; gap:6px; align-items:center;
   }
+  .leg-note-icon{flex:none; line-height:1;}
 
   /* progress */
   .progress-row{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
@@ -474,9 +475,18 @@
 
   .add-form{
     background:var(--paper-raised); border:1.5px dashed var(--line); border-radius:14px; padding:16px;
-    display:flex; flex-direction:column; gap:10px; margin-top:6px;
+    margin-top:6px; margin-bottom:16px;
   }
+  div.add-form{display:flex; flex-direction:column; gap:10px;}
   .add-form h3{font-size:13px; color:var(--ink-soft); font-weight:700;}
+  .add-form summary{
+    cursor:pointer; font-weight:700; font-size:13px; color:var(--ink-soft);
+    list-style:none; display:flex; align-items:center; gap:6px; user-select:none;
+  }
+  .add-form summary::-webkit-details-marker{display:none;}
+  .add-form summary::after{content:"›"; margin-left:auto; display:inline-block; transform:rotate(90deg); transition:transform .15s; color:var(--ink-faint);}
+  .add-form[open] summary::after{transform:rotate(270deg);}
+  .add-form-body{display:flex; flex-direction:column; gap:10px; margin-top:12px;}
   .field-row{display:flex; gap:8px; flex-wrap:wrap;}
   .field{flex:1; min-width:120px; display:flex; flex-direction:column; gap:4px;}
   .field label{font-size:11px; color:var(--ink-faint); font-weight:600;}
@@ -571,7 +581,7 @@
         <div class="flight-leg">
           <span class="leg-tag ret">回程</span>
           <div class="leg-route">曼谷 → 台北</div>
-          <div class="leg-note">⚠️ 航空公司已將所有乘客調整至此航班</div>
+          <div class="leg-note"><span class="leg-note-icon">⚠️</span><span>航空公司已將所有乘客調整至此航班</span></div>
           <div class="leg-grid">
             <div class="leg-point">
               <div class="date">12/28（一）</div>
@@ -646,6 +656,47 @@
 
   <!-- ITINERARY -->
   <section class="panel" id="panel-itin" role="tabpanel" hidden>
+    <details class="add-form">
+      <summary>+ 手動新增行程</summary>
+      <div class="add-form-body">
+        <div class="field-row">
+          <div class="field">
+            <label for="fi-day">天數</label>
+            <select id="fi-day"></select>
+          </div>
+          <div class="field">
+            <label for="fi-cat">分類</label>
+            <select id="fi-cat">
+              <option value="move">移動</option>
+              <option value="eat">吃喝</option>
+              <option value="sight">景點</option>
+              <option value="stay">住宿</option>
+              <option value="relax">按摩</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="fi-time">時間（選填）</label>
+            <input id="fi-time" type="text" placeholder="例如 14:30" maxlength="12">
+          </div>
+          <div class="field">
+            <label for="fi-title">項目名稱</label>
+            <input id="fi-title" type="text" placeholder="例如：文創市集" maxlength="60">
+          </div>
+        </div>
+        <div class="field">
+          <label for="fi-note">備註（選填）</label>
+          <input id="fi-note" type="text" placeholder="交通方式／提醒事項" maxlength="200">
+        </div>
+        <div class="field">
+          <label for="fi-mapquery">🌐 地圖搜尋關鍵字（選填，留空就用項目名稱查）</label>
+          <input id="fi-mapquery" type="text" placeholder="例如：完整店名、地址，或飯店英文名" maxlength="120">
+        </div>
+        <button class="btn primary block" id="fi-submit">加入行程</button>
+      </div>
+    </details>
+
     <div class="day-tabs" id="day-tabs" role="tablist" aria-label="選擇天數"></div>
     <div class="day-heading">
       <div class="left">
@@ -679,49 +730,56 @@
       <div class="legend-item"><span class="legend-dot" style="background:var(--violet)"></span>住宿</div>
       <div class="legend-item"><span class="legend-dot" style="background:var(--pink)"></span>按摩</div>
     </div>
-
-    <div class="add-form">
-      <h3>+ 手動新增行程</h3>
-      <div class="field-row">
-        <div class="field">
-          <label for="fi-day">天數</label>
-          <select id="fi-day"></select>
-        </div>
-        <div class="field">
-          <label for="fi-cat">分類</label>
-          <select id="fi-cat">
-            <option value="move">移動</option>
-            <option value="eat">吃喝</option>
-            <option value="sight">景點</option>
-            <option value="stay">住宿</option>
-            <option value="relax">按摩</option>
-          </select>
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <label for="fi-time">時間（選填）</label>
-          <input id="fi-time" type="text" placeholder="例如 14:30" maxlength="12">
-        </div>
-        <div class="field">
-          <label for="fi-title">項目名稱</label>
-          <input id="fi-title" type="text" placeholder="例如：文創市集" maxlength="60">
-        </div>
-      </div>
-      <div class="field">
-        <label for="fi-note">備註（選填）</label>
-        <input id="fi-note" type="text" placeholder="交通方式／提醒事項" maxlength="200">
-      </div>
-      <div class="field">
-        <label for="fi-mapquery">🌐 地圖搜尋關鍵字（選填，留空就用項目名稱查）</label>
-        <input id="fi-mapquery" type="text" placeholder="例如：完整店名、地址，或飯店英文名" maxlength="120">
-      </div>
-      <button class="btn primary block" id="fi-submit">加入行程</button>
-    </div>
   </section>
 
   <!-- SHOPPING -->
   <section class="panel" id="panel-shop" role="tabpanel" hidden>
+    <details class="add-form">
+      <summary>+ 新增項目</summary>
+      <div class="add-form-body">
+        <div class="field-row">
+          <div class="field">
+            <label for="f-owner">誰的清單</label>
+            <select id="f-owner">
+              <option value="timmy">火鍋</option>
+              <option value="asan">阿殤</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-cat">分類</label>
+            <select id="f-cat">
+              <option>零食</option>
+              <option>藥妝保健</option>
+              <option>服飾</option>
+              <option>伴手禮</option>
+              <option>生活用品</option>
+              <option>其他</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-name">商品名稱</label>
+          <input id="f-name" type="text" placeholder="例如：小老闆海苔" maxlength="60">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-note">備註</label>
+            <input id="f-note" type="text" placeholder="口味／份量／給誰" maxlength="80">
+          </div>
+          <div class="field">
+            <label for="f-store">店家／數量</label>
+            <input id="f-store" type="text" placeholder="選填" maxlength="40">
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-budget">預算（THB，選填）</label>
+          <input id="f-budget" type="number" inputmode="decimal" min="0" step="1" placeholder="不限">
+        </div>
+        <button class="btn primary block" id="f-submit">加入清單</button>
+        <p style="font-size:11px;color:var(--ink-faint);line-height:1.6;margin-top:2px" id="sync-note"></p>
+      </div>
+    </details>
+
     <div class="chip-row" id="owner-filter">
       <button class="chip" data-owner="all" aria-pressed="true">全部</button>
       <button class="chip" data-owner="timmy" aria-pressed="false">火鍋</button>
@@ -738,50 +796,6 @@
     </div>
 
     <div id="shop-groups"></div>
-
-    <div class="add-form">
-      <h3>+ 新增項目</h3>
-      <div class="field-row">
-        <div class="field">
-          <label for="f-owner">誰的清單</label>
-          <select id="f-owner">
-            <option value="timmy">火鍋</option>
-            <option value="asan">阿殤</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="f-cat">分類</label>
-          <select id="f-cat">
-            <option>零食</option>
-            <option>藥妝保健</option>
-            <option>服飾</option>
-            <option>伴手禮</option>
-            <option>生活用品</option>
-            <option>其他</option>
-          </select>
-        </div>
-      </div>
-      <div class="field">
-        <label for="f-name">商品名稱</label>
-        <input id="f-name" type="text" placeholder="例如：小老闆海苔" maxlength="60">
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <label for="f-note">備註</label>
-          <input id="f-note" type="text" placeholder="口味／份量／給誰" maxlength="80">
-        </div>
-        <div class="field">
-          <label for="f-store">店家／數量</label>
-          <input id="f-store" type="text" placeholder="選填" maxlength="40">
-        </div>
-      </div>
-      <div class="field">
-        <label for="f-budget">預算（THB，選填）</label>
-        <input id="f-budget" type="number" inputmode="decimal" min="0" step="1" placeholder="不限">
-      </div>
-      <button class="btn primary block" id="f-submit">加入清單</button>
-      <p style="font-size:11px;color:var(--ink-faint);line-height:1.6;margin-top:2px" id="sync-note"></p>
-    </div>
   </section>
 
   <!-- SPLIT BILL -->
@@ -996,7 +1010,7 @@
     splits: []
   };
   var db = null;
-  var ownerFilter = "all", catFilter = "all";
+  var ownerFilter = getSavedOwnerFilter(), catFilter = "all";
   var currentDay = (typeof TODAY_IDX === "number") ? TODAY_IDX : 0;
   var budgetLimit = null;
   var unsub = [];
@@ -1122,6 +1136,12 @@
   }
   function setBudgetLimitLocal(v){
     try{ if (v===null) localStorage.removeItem("bkk-budget-limit"); else localStorage.setItem("bkk-budget-limit", String(v)); }catch(e){}
+  }
+  function getSavedOwnerFilter(){
+    try{ var v = localStorage.getItem("bkk-owner-filter"); return v || "all"; }catch(e){ return "all"; }
+  }
+  function setSavedOwnerFilter(v){
+    try{ localStorage.setItem("bkk-owner-filter", v); }catch(e){}
   }
   function setBudgetLimit(v){
     budgetLimit = v;
@@ -1916,11 +1936,22 @@
     }
   }
 
+  function syncOwnerFilterUI(){
+    var row = document.getElementById("owner-filter");
+    if (!row) return;
+    row.querySelectorAll(".chip").forEach(function(c){
+      c.setAttribute("aria-pressed", c.dataset.owner===ownerFilter ? "true":"false");
+    });
+  }
+  function setOwnerFilter(owner){
+    ownerFilter = owner;
+    syncOwnerFilterUI();
+    setSavedOwnerFilter(owner);
+    renderShopping();
+  }
   document.getElementById("owner-filter").addEventListener("click", function(e){
     var btn = e.target.closest(".chip"); if(!btn) return;
-    ownerFilter = btn.dataset.owner;
-    this.querySelectorAll(".chip").forEach(function(c){ c.setAttribute("aria-pressed", c===btn ? "true":"false"); });
-    renderShopping();
+    setOwnerFilter(btn.dataset.owner);
   });
   document.getElementById("cat-filter").addEventListener("click", function(e){
     var btn = e.target.closest(".chip"); if(!btn) return;
@@ -1932,8 +1963,9 @@
     var name = document.getElementById("f-name").value.trim();
     if (!name){ document.getElementById("f-name").focus(); return; }
     var budgetVal = document.getElementById("f-budget").value;
+    var ownerVal = document.getElementById("f-owner").value;
     addShopItem({
-      owner: document.getElementById("f-owner").value,
+      owner: ownerVal,
       category: document.getElementById("f-cat").value,
       name: name,
       note: document.getElementById("f-note").value.trim(),
@@ -1944,6 +1976,7 @@
     document.getElementById("f-note").value = "";
     document.getElementById("f-store").value = "";
     document.getElementById("f-budget").value = "";
+    setOwnerFilter(ownerVal);
   });
 
   /* ---------- split bill ---------- */
@@ -2129,6 +2162,7 @@
   }
 
   function init(){
+    syncOwnerFilterUI();
     renderBudget(); renderPrep(); renderShopping(); renderPacking(); renderDay(currentDay); renderSplit();
     var syncNote = document.getElementById("sync-note");
     if (firebaseReady()){
