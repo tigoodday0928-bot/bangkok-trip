@@ -9,9 +9,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#F3F6F1;
+    --paper:#F6F1E7;
     --paper-raised:#FFFFFF;
-    --paper-sunken:#EAEFE7;
+    --paper-sunken:#EFE6D6;
+    --header-bg:#1F4030;
+    --header-line:#D8B25C;
+    --header-ink:#FBF5E6;
+    --header-ink-soft:#CFE0CE;
+    --header-tab-inactive:rgba(255,255,255,.60);
+    --header-tab-hover:rgba(255,255,255,.85);
     --ink:#142420;
     --ink-soft:#51625B;
     --ink-faint:#8B9992;
@@ -114,16 +120,15 @@
   /* header */
   header.top{
     position:sticky; top:env(safe-area-inset-top,0px); z-index:30;
-    background:var(--paper); border-bottom:1px solid var(--line);
+    background:var(--header-bg); border-bottom:2px solid var(--header-line);
     padding-top:calc(14px + env(safe-area-inset-top,0px));
   }
   .brand{display:flex; align-items:center; gap:12px;}
   .tree-mark{flex:none;}
-  .brand h1{font-size:22px; font-weight:900; letter-spacing:.01em;}
-  .brand .sub{font-family:var(--font-mono); font-size:12px; color:var(--teal); margin-top:3px; letter-spacing:.02em;}
+  .brand h1{font-size:22px; font-weight:900; letter-spacing:.01em; color:var(--header-ink);}
+  .brand .sub{font-family:var(--font-mono); font-size:12px; color:var(--header-ink-soft); margin-top:3px; letter-spacing:.02em;}
   .tabs{
     display:flex; gap:2px; margin-top:14px; padding-bottom:0;
-    border-bottom:1px solid var(--line);
     overflow-x:auto; scrollbar-width:none;
   }
   .tabs::-webkit-scrollbar{display:none;}
@@ -132,12 +137,12 @@
   }
   .tab-btn{
     appearance:none; border:none; background:transparent; cursor:pointer;
-    padding:10px 14px 12px; font-size:14px; font-weight:600; color:var(--ink-faint);
+    padding:10px 14px 12px; font-size:14px; font-weight:600; color:var(--header-tab-inactive);
     border-bottom:2px solid transparent; white-space:nowrap; font-family:var(--font-body);
   }
-  .tab-btn:hover{color:var(--ink-soft);}
-  .tab-btn[aria-selected="true"]{color:var(--teal); border-bottom-color:var(--teal);}
-  .tab-btn:focus-visible{outline:2px solid var(--teal); outline-offset:2px;}
+  .tab-btn:hover{color:var(--header-tab-hover);}
+  .tab-btn[aria-selected="true"]{color:var(--header-ink); border-bottom-color:var(--header-line);}
+  .tab-btn:focus-visible{outline:2px solid var(--header-line); outline-offset:2px;}
 
   main{padding-block:24px 64px;}
   .panel[hidden]{display:none!important;}
@@ -573,9 +578,9 @@
   <div class="wrap">
     <div class="brand">
       <svg class="tree-mark" width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
-        <path d="M15 2L20 11H16.5L21 18H16L20 25H10L14 18H9L13.5 11H10L15 2Z" fill="var(--teal)"/>
-        <rect x="13.2" y="25" width="3.6" height="3" rx="0.8" fill="var(--gold)"/>
-        <circle cx="15" cy="7" r="1.4" fill="var(--coral)"/>
+        <path d="M15 2L20 11H16.5L21 18H16L20 25H10L14 18H9L13.5 11H10L15 2Z" fill="#8FCB8E"/>
+        <rect x="13.2" y="25" width="3.6" height="3" rx="0.8" fill="#D8B25C"/>
+        <circle cx="15" cy="7" r="1.4" fill="#F4DE94"/>
       </svg>
       <div>
         <h1>曼谷聖誕假期</h1>
