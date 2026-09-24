@@ -1169,13 +1169,21 @@
     var end = new Date("2026-12-28T23:59:00+07:00");
     var now = new Date();
     var msDay = 86400000;
+    function fmtTripDate(d){
+      try{
+        return d.toLocaleDateString("en-CA", {timeZone:"Asia/Bangkok", year:"numeric", month:"2-digit", day:"2-digit"}).replace(/-/g, ".");
+      }catch(e){
+        return d.getFullYear() + "." + String(d.getMonth()+1).padStart(2,"0") + "." + String(d.getDate()).padStart(2,"0");
+      }
+    }
+    var tripDates = fmtTripDate(start) + " – " + fmtTripDate(end);
     if (now < start){
       var days = Math.ceil((start - now)/msDay);
-      el.textContent = "距離出發還有 " + days + " 天";
+      el.textContent = tripDates + " · 距離出發還有 " + days + " 天";
     } else if (now <= end){
-      el.textContent = "旅途進行中 🎄";
+      el.textContent = tripDates + " · 旅途進行中 🎄";
     } else {
-      el.textContent = "12/24–12/28・曼谷五天四夜";
+      el.textContent = tripDates + "・曼谷五天四夜";
     }
   })();
 
