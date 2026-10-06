@@ -743,7 +743,7 @@
         </div>
         <div class="field">
           <label for="fi-note">備註（選填）</label>
-          <input id="fi-note" type="text" placeholder="交通方式／提醒事項" maxlength="200">
+          <input id="fi-note" type="text" placeholder="交通方式／提醒事項（直接貼網址會自動變成按鈕）" maxlength="600">
         </div>
         <div class="field">
           <label for="fi-mapquery">🌐 地圖搜尋關鍵字（選填，留空就用項目名稱查）</label>
@@ -1119,6 +1119,51 @@
   }
 
   /* Rich-text note markup: {b}bold{/b} {c:COLOR}colored{/c} {a:URL}link{/a} — well-nested, stack-balanced. */
+  /* Pull pasted URLs out of a note so they render as buttons instead of text.
+     - bare URL:            https://...           -> button labelled by site name
+     - named link:          [按鈕名稱](https://...) -> button with custom label
+     - {a:URL}text{/a} inline links are left alone (they stay inside the note). */
+  function labelForUrl(url){
+    var host = "";
+    try{ host = new URL(url).hostname.replace(/^www\./, "").toLowerCase(); }catch(e){}
+    var path = "";
+    try{ path = new URL(url).pathname; }catch(e){}
+    if (/(^|\.)klook\.com$/.test(host)) return "Klook";
+    if (/(^|\.)kkday\.com$/.test(host)) return "KKday";
+    if (host === "maps.app.goo.gl" || (host === "goo.gl" && path.indexOf("/maps") === 0) || (/(^|\.)google\.[a-z.]+$/.test(host) && path.indexOf("/maps") === 0)) return "Google 地圖";
+    if (/(^|\.)facebook\.com$/.test(host) || host === "fb.com" || host === "fb.me") return "Facebook";
+    if (/(^|\.)instagram\.com$/.test(host)) return "Instagram";
+    if (/(^|\.)youtube\.com$/.test(host) || host === "youtu.be") return "YouTube";
+    if (/(^|\.)tripadvisor\./.test(host)) return "Tripadvisor";
+    if (/(^|\.)agoda\.com$/.test(host)) return "Agoda";
+    if (/(^|\.)booking\.com$/.test(host)) return "Booking.com";
+    if (host === "line.me" || host === "lin.ee") return "LINE";
+    return host || "連結";
+  }
+  function extractNoteLinks(note){
+    var result = {note: note || "", links: []};
+    if (!note) return result;
+    var keep = [];
+    var masked = note.replace(/\{a:[^}]*\}/g, function(m){
+      keep.push(m);
+      return "\u0001" + (keep.length - 1) + "\u0002";
+    });
+    masked = masked.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function(_, label, url){
+      result.links.push({label: label.trim(), url: url});
+      return "";
+    });
+    masked = masked.replace(/https?:\/\/[A-Za-z0-9\-._~:\/?#@!$&'*+,;=%]+/g, function(url){
+      var clean = url.replace(/[.,;:!?]+$/, "");
+      result.links.push({label: labelForUrl(clean), url: clean});
+      return "";
+    });
+    masked = masked.replace(/\u0001(\d+)\u0002/g, function(_, i){ return keep[Number(i)]; });
+    // tidy leftover blank space/lines where URLs were removed
+    masked = masked.split("\n").map(function(l){ return l.replace(/[ \t]+$/, ""); }).join("\n").replace(/\n{2,}/g, "\n").trim();
+    result.note = masked;
+    return result;
+  }
+
   function renderRichNote(markup){
     if (!markup) return "";
     var tagRe = /\{(\/?)(b|c|a)(?::([^}]*))?\}/g;
@@ -1607,7 +1652,7 @@
         + '<div class="field"><label>項目名稱</label><input class="ie-title" type="text" value="'+escapeHtml(s.title||"")+'" maxlength="60"></div>'
       + '</div>'
       + '<div class="field"><label>⏱ 關鍵時間（選填，例如「約45分鐘」或「停留1.5小時」）</label><input class="ie-duration" type="text" value="'+escapeHtml(s.duration||"")+'" maxlength="30"></div>'
-      + '<div class="field"><label>備註（選填，支援 {b}粗體{/b}／{c:red}顏色{/c}／{a:網址}連結{/a} 標記）</label><textarea class="ie-note" rows="3">'+escapeHtml(s.note||"")+'</textarea></div>'
+      + '<div class="field"><label>備註（選填。直接貼網址會自動變成按鈕；想自訂按鈕名稱：[名稱](網址)。另支援 {b}粗體{/b}／{c:red}顏色{/c}／{a:網址}文字連結{/a}）</label><textarea class="ie-note" rows="3">'+escapeHtml(s.note||"")+'</textarea></div>'
       + '<div class="field"><label>🌐 地圖搜尋關鍵字（選填，留空就用項目名稱查）</label><input class="ie-mapquery" type="text" value="'+escapeHtml(s.mapQuery||"")+'" maxlength="120" placeholder="例如：完整店名、地址，或飯店英文名"></div>'
       + '<div class="edit-form-btns"><button type="button" class="btn primary ie-save" data-id="'+s.id+'">儲存</button><button type="button" class="btn ghost ie-cancel">取消</button></div>'
       + '</div>';
@@ -1655,15 +1700,20 @@
           var durClass = s.cat==='move' ? 'dur' : 'stay';
           html += '<div class="itin-meta-row"><span class="itin-meta-chip '+durClass+'">'+durIcon+' '+escapeHtml(s.duration)+'</span></div>';
         }
-        if (s.note) html += '<div class="itin-note">'+renderRichNote(s.note)+'</div>';
+        var noteParts = extractNoteLinks(s.note);
+        if (noteParts.note) html += '<div class="itin-note">'+renderRichNote(noteParts.note)+'</div>';
 
         var linksHtml = '';
         if (s.cat !== 'move'){
           linksHtml += '<button type="button" class="map-open-btn" data-title="'+escapeHtml(s.mapQuery||s.title)+'" data-label="'+escapeHtml(s.title)+'" aria-label="在地圖上查看「'+escapeHtml(s.title)+'」">🌐 地圖</button>';
         }
-        if (s.links && s.links.length){
-          linksHtml += s.links.map(function(l){
-            return '<a href="'+l.url+'" target="_blank" rel="noopener">🔗 '+escapeHtml(l.label)+'</a>';
+        var allLinks = (s.links || []).slice();
+        noteParts.links.forEach(function(l){
+          if (!allLinks.some(function(x){ return x.url === l.url; })) allLinks.push(l);
+        });
+        if (allLinks.length){
+          linksHtml += allLinks.map(function(l){
+            return '<a href="'+escapeHtml(l.url)+'" target="_blank" rel="noopener noreferrer">🔗 '+escapeHtml(l.label)+'</a>';
           }).join("");
         }
 
